@@ -198,6 +198,49 @@ _mod_install() {
 			echo "Mod \"$_MODNAME\" already installed!" >&2
 			continue
 		fi
+		_SRCLICENSE="$_STAGEDIR/LICENSE.source.txt"
+		if [ -e "$_SRCLICENSE" ]; then
+			while true; do
+				echo "Mod \"$_MODNAME\" has a source code license."
+				echo "You can [v]iew, [r]eject or [a]ccept it."
+				read -n 1 -rp "[V/r/a] " _INPUT
+				echo
+				case "$_INPUT" in
+					'r'|'R')
+						echo "Mod \"$_MODNAME\" will not be installed."
+						continue 2
+						;;
+					'a'|'A')
+						break
+						;;
+					*)
+						"$_PAGER" "$_SRCLICENSE"
+						;;
+				esac
+			done
+		fi
+		_ASSETLICENSE="$_STAGEDIR/LICENSE.assets.txt"
+		if [ -e "$_ASSETLICENSE" ]; then
+			while true; do
+				echo "Mod \"$_MODNAME\" has an asset license."
+				echo "You can [v]iew, [r]eject or [a]ccept it."
+				read -n 1 -rp "[V/r/a] " _INPUT
+				echo
+				case "$_INPUT" in
+					'r'|'R')
+						echo "Mod \"$_MODNAME\" will not be installed."
+						continue 2
+						;;
+					'a'|'A')
+						break
+						;;
+					*)
+						"$_PAGER" "$_ASSETLICENSE"
+						;;
+				esac
+			done
+		fi
+		echo "Installing mod \"$_MODNAME\"..."
 		_ensure_modsdir
 		mv "$_STAGEDIR" "$_MODDIR"
 		echo "Successfully installed mod \"$_MODNAME\" (version $_MODVER)."
@@ -320,7 +363,7 @@ _pack_create() {
 	echo "# Launch this modpack." >>"$_PACKFILE"
 	echo "export AER_MODS=\"$@\"" >>"$_PACKFILE"
 	echo "export LD_LIBRARY_PATH=./lib:\$LD_LIBRARY_PATH" >>"$_PACKFILE"
-	echo "./$_MODEXEC >./$_PACKDIR_REL/${_PACKNAME}.log 2>&1" >>"$_PACKFILE"
+	echo "./$_MODEXEC 2>&1 | tee ./$_PACKDIR_REL/${_PACKNAME}.log" >>"$_PACKFILE"
 	chmod +x "$_PACKFILE"
 	echo "Successfully created modpack \"$_PACKNAME\"."
 }
@@ -413,14 +456,10 @@ _usage() {
 	echo "		Delete one or more modpacks."
 	echo "	pack-edit <pack_name>"
 	echo "		Edit the contents of a modpack."
-	echo "		Note that this uses the \"EDITOR\" evironment variable"
-	echo "		or \"$_DEFAULT_EDITOR\" if undefined."
 	echo "	pack-launch <pack_name>"
 	echo "		Launch a modpack."
 	echo "	pack-log <pack_name>"
 	echo "		Display a modpack's most recent runtime log."
-	echo "		Note that this uses the \"PAGER\" evironment variable"
-	echo "		or \"$_DEFAULT_PAGER\" if undefined."
 	echo
 	echo "miscellaneous operations:"
 	echo "	help"
@@ -433,6 +472,14 @@ _usage() {
 	echo "		Hyper Light Drifter game directory."
 	echo "		Defaults to \"$_DEFAULT_GAMEDIR_RAW\"."
 	echo "		Currently set to \"$_GAMEDIR\"."
+	echo "	PAGER"
+	echo "		Pager program used to display text."
+	echo "		Defaults to \"$_DEFAULT_PAGER\"."
+	echo "		Currently set to \"$_PAGER\"."
+	echo "	EDITOR"
+	echo "		Editing program used to modify text."
+	echo "		Defaults to \"$_DEFAULT_EDITOR\"."
+	echo "		Currently set to \"$_EDITOR\"."
 }
 
 _version() {
