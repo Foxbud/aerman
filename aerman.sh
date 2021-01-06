@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2020 Garrett Fairburn
+# Copyright 2020 Garrett Fairburn <garrett@fairburn.dev>
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -48,29 +48,27 @@ else
 	_EDITOR="$_DEFAULT_EDITOR"
 fi
 
-_AERMANDIR_REL="aerman"
-_AERMANDIR="$_GAMEDIR/$_AERMANDIR_REL"
-
-_AERDIR_REL="$_AERMANDIR_REL/aer"
+_AERDIR_REL="aer"
 _AERDIR="$_GAMEDIR/$_AERDIR_REL"
 
-_MODSDIR_REL="$_AERMANDIR_REL/mods"
+_MREDIR_REL="$_AERDIR_REL/mre"
+_MREDIR="$_GAMEDIR/$_MREDIR_REL"
+
+_MODSDIR_REL="$_AERDIR_REL/mods"
 _MODSDIR="$_GAMEDIR/$_MODSDIR_REL"
 
-_PACKDIR_REL="$_AERMANDIR_REL/packs"
+_PACKDIR_REL="$_AERDIR_REL/packs"
 _PACKDIR="$_GAMEDIR/$_PACKDIR_REL"
 
 _ASSETSDIR_REL="assets/mod"
 _ASSETSDIR="$_GAMEDIR/$_ASSETSDIR_REL"
 
-_TMPDIR_REL="$_AERMANDIR_REL/tmp"
+_TMPDIR_REL="$_AERDIR_REL/tmp"
 _TMPDIR="$_GAMEDIR/$_TMPDIR_REL"
 
 _ORIGEXEC="HyperLightDrifter"
 _MODEXEC="${_ORIGEXEC}Patched"
 _EXECDIFF="${_ORIGEXEC}Diff"
-
-_MRELIB="libaermre.so"
 
 
 
@@ -98,6 +96,11 @@ _ensure_packdir() {
 _prep_tmpdir() {
 	rm -rf "$_TMPDIR"
 	mkdir -p "$_TMPDIR"
+}
+
+_prep_assetsdir() {
+	rm -rf "$_ASSETSDIR"
+	mkdir -p "$_ASSETSDIR"
 }
 
 _modinfo() {
@@ -147,11 +150,11 @@ _framework_patch_uninstall() {
 }
 
 _framework_mre_install() {
-	if [ -d "$_AERDIR" ]; then
+	if [ -d "$_MREDIR" ]; then
 		echo "MRE is already installed!" >&2
 		exit 1
 	fi
-	rm -rf "$_AERDIR"
+	rm -rf "$_MREDIR"
 	_prep_tmpdir
 	_MREARCHIVE="$1"
 	tar -C "$_TMPDIR" -xf "$_MREARCHIVE" 2>/dev/null
@@ -160,16 +163,16 @@ _framework_mre_install() {
 		exit 1
 	fi
 	_STAGEDIR="$(find "$_TMPDIR" -maxdepth 1 -mindepth 1)"
-	mv "$_STAGEDIR" "$_AERDIR"
+	mv "$_STAGEDIR" "$_MREDIR"
 	echo "Successfully installed MRE."
 }
 
 _framework_mre_uninstall() {
-	if [ ! -d "$_AERDIR" ]; then
+	if [ ! -d "$_MREDIR" ]; then
 		echo "MRE is not installed!" >&2
 		exit 1
 	fi
-	rm -rf "$_AERDIR"
+	rm -rf "$_MREDIR"
 	echo "Successfully uninstalled MRE."
 }
 
@@ -186,14 +189,14 @@ _framework_purge() {
 			exit 0
 			;;
 	esac
-	rm -rf "$_GAMEDIR/$_MODEXEC" "$_AERMANDIR" "$_ASSETSDIR"
+	rm -rf "$_GAMEDIR/$_MODEXEC" "$_AERDIR" "$_ASSETSDIR"
 	echo "Successfully purged framework."
 }
 
 _framework_status() {
 	test -e "$_GAMEDIR/$_MODEXEC"
 	_PATCH_INSTALLED=$?
-	test -d "$_AERDIR"
+	test -d "$_MREDIR"
 	_MRE_INSTALLED=$?
 	if [ $_PATCH_INSTALLED -eq 0 ]; then
 		echo "Patch installed."
@@ -240,7 +243,7 @@ _mod_install() {
 			echo "Mod \"$_MODNAME\" already installed!" >&2
 			continue
 		fi
-		_SRCLICENSE="$_STAGEDIR/LICENSE.source.txt"
+		_SRCLICENSE="$_STAGEDIR/LICENSE.txt"
 		if [ -e "$_SRCLICENSE" ]; then
 			while true; do
 				echo "Mod \"$_MODNAME\" has a source code license."
@@ -261,7 +264,7 @@ _mod_install() {
 				esac
 			done
 		fi
-		_ASSETLICENSE="$_STAGEDIR/LICENSE.assets.txt"
+		_ASSETLICENSE="$_STAGEDIR/assets/LICENSE.txt"
 		if [ -e "$_ASSETLICENSE" ]; then
 			while true; do
 				echo "Mod \"$_MODNAME\" has an asset license."
@@ -328,9 +331,9 @@ _mod_info() {
 
 _pack_list() {
 	_ensure_packdir
-	for _PACKFILE in $(find "$_PACKDIR" -maxdepth 1 -mindepth 1 -regex '.*\.sh'); do
+	for _PACKFILE in $(find "$_PACKDIR" -maxdepth 1 -mindepth 1 -regex '.*\.toml'); do
 		_PACKNAME=$(basename "$_PACKFILE")
-		_PACKNAME=${_PACKNAME%.sh}
+		_PACKNAME=${_PACKNAME%.toml}
 		echo $_PACKNAME
 	done
 }
@@ -339,50 +342,38 @@ _pack_create() {
 	_ensure_packdir
 	_PACKNAME=$1
 	shift
-	_PACKFILE="$_PACKDIR/${_PACKNAME}.sh"
+	_PACKFILE="$_PACKDIR/${_PACKNAME}.toml"
 	if [ -e "$_PACKFILE" ]; then
 		echo "Modpack \"$_PACKNAME\" already exists!" >&2
 		exit 1
 	fi
-	echo "#!/usr/bin/env bash" >>"$_PACKFILE"
+	echo "# ================================" >>"$_PACKFILE"
+	echo "#  MODPACK:  $_PACKNAME" >>"$_PACKFILE"
+	echo "#  CREATED:  $_NOW" >>"$_PACKFILE"
+	echo "#  TOOL:     $_SCRIPTNAME ($_VERSION)" >>"$_PACKFILE"
+	echo "# ================================" >>"$_PACKFILE"
 	echo >>"$_PACKFILE"
 	echo >>"$_PACKFILE"
 	echo >>"$_PACKFILE"
-	echo "# Modpack: $_PACKNAME" >>"$_PACKFILE"
-	echo "# Created: $_NOW" >>"$_PACKFILE"
-	echo "# Tool: $_SCRIPTNAME ($_VERSION)" >>"$_PACKFILE"
+	echo "# ================================" >>"$_PACKFILE"
+	echo "#  MRE" >>"$_PACKFILE"
+	echo "# ================================" >>"$_PACKFILE"
 	echo >>"$_PACKFILE"
-	echo "# Change a configuration value by uncommenting the appropriate export." >>"$_PACKFILE"
+	echo "[mre]" >>"$_PACKFILE"
 	echo >>"$_PACKFILE"
-	echo >>"$_PACKFILE"
-	echo >>"$_PACKFILE"
-	echo "# Set working directory." >>"$_PACKFILE"
-	echo "if [ -n \"\$AERMAN_GAMEDIR\" ]; then" >>"$_PACKFILE"
-	echo "	cd \"\$AERMAN_GAMEDIR\"" >>"$_PACKFILE"
-	echo "else" >>"$_PACKFILE"
-	echo "	cd \"$_DEFAULT_GAMEDIR_RAW\"" >>"$_PACKFILE"
-	echo "fi" >>"$_PACKFILE"
-	echo >>"$_PACKFILE"
-	echo "# Prepare mod asset directory." >>"$_PACKFILE"
-	echo "rm -rf \"./$_ASSETSDIR_REL\"" >>"$_PACKFILE"
-	echo "mkdir -p \"./$_ASSETSDIR_REL\"" >>"$_PACKFILE"
+	echo "# Mods in this modpack." >>"$_PACKFILE"
+	echo "mods = [" >>"$_PACKFILE"
+	for _MODNAME in $@; do
+		echo -e "\t\"$_MODNAME\"," >>"$_PACKFILE"
+	done
+	echo "]" >>"$_PACKFILE"
+	echo -n "."
 	for _MODNAME in $@; do
 		_MODDIR="$_MODSDIR/$_MODNAME"
 		if [ ! -d "$_MODDIR" ]; then
 			echo "No such mod \"$_MODNAME\"!" >&2
 			rm "$_PACKFILE"
 			exit 1
-		fi
-		echo >>"$_PACKFILE"
-		echo >>"$_PACKFILE"
-		echo >>"$_PACKFILE"
-		echo "# Mod \"$_MODNAME\" configuration." >>"$_PACKFILE"
-		echo >>"$_PACKFILE"
-		echo "# Prepare mod resources." >>"$_PACKFILE"
-		echo "export AER_MODS=\"\$AER_MODS $_MODNAME\"" >>"$_PACKFILE"
-		echo "export LD_LIBRARY_PATH=\"./$_MODSDIR_REL/$_MODNAME/lib:\$LD_LIBRARY_PATH\"" >>"$_PACKFILE"
-		if [ -d "$_MODDIR/assets" ]; then
-			echo "ln -sf \"\$PWD/$_MODSDIR_REL/$_MODNAME/assets\" \"./$_ASSETSDIR_REL/$_MODNAME\"" >>"$_PACKFILE"
 		fi
 		_MODCONF="$(_modinfo "$_MODDIR" '.configuration')"
 		if [ ! $? -eq 0 ]; then
@@ -393,48 +384,60 @@ _pack_create() {
 			continue
 		fi
 		echo >>"$_PACKFILE"
+		echo >>"$_PACKFILE"
+		echo >>"$_PACKFILE"
+		echo "# ================================" >>"$_PACKFILE"
+		echo "#  ${_MODNAME^^}" >>"$_PACKFILE"
+		echo "# ================================" >>"$_PACKFILE"
+		echo >>"$_PACKFILE"
+		echo "[$_MODNAME]" >>"$_PACKFILE"
 		for _CONFIDX in $(seq 0 $(($_NUMCONF - 1))); do
 			_CONFELEM="$(jq -rcM ".[$_CONFIDX]" <<<"$_MODCONF")"
+			echo >>"$_PACKFILE"
 			if _CONFDESC="$(jq -rcMe '.description' <<<"$_CONFELEM")"; then
 				echo "# $_CONFDESC" >>"$_PACKFILE"
 			fi
-			_CONFKEY=$(jq -rcM '.key' <<<"$_CONFELEM")
-			if _CONFDEFAULT="$(jq -rcMe '.default' <<<"$_CONFELEM")"; then
-				echo "#export $_CONFKEY='$_CONFDEFAULT'" >>"$_PACKFILE"
-			else
-				echo "#export $_CONFKEY=''" >>"$_PACKFILE"
+			_CONFKEY="$(jq -rcM '.key' <<<"$_CONFELEM")"
+			_NUMKEY=$(jq -rcM '. | length' <<<"$_CONFKEY")
+			_BUILTKEY="$(jq -rcM ".[0]" <<<"$_CONFKEY")"
+			for _KEYIDX in $(seq 1 $(($_NUMKEY - 1))); do
+				_BUILTKEY="$_BUILTKEY.$(jq -rcM ".[$_KEYIDX]" <<<"$_CONFKEY")"
+			done
+			_CONFDEF="$(jq -cM '.default' <<<"$_CONFELEM")"
+			if [ "$_CONFDEF" = "null" ]; then
+				_CONFDEF=""
 			fi
+			case "$_BUILTKEY" in
+				*\ *)
+					echo "#\"$_BUILTKEY\" = $_CONFDEF">>"$_PACKFILE"
+					;;
+				*)
+					echo "#$_BUILTKEY = $_CONFDEF">>"$_PACKFILE"
+					;;
+			esac
+			echo -n "."
 		done
 	done
-	echo >>"$_PACKFILE"
-	echo >>"$_PACKFILE"
-	echo >>"$_PACKFILE"
-	echo "# Launch this modpack." >>"$_PACKFILE"
-	echo "export LD_LIBRARY_PATH=\"./$_AERDIR_REL/lib:./lib:\$LD_LIBRARY_PATH\"" >>"$_PACKFILE"
-	echo "\"./$_MODEXEC\" 2>&1 | tee \"./$_PACKDIR_REL/${_PACKNAME}.log\"" >>"$_PACKFILE"
-	chmod +x "$_PACKFILE"
-	echo >>"$_PACKFILE"
-	echo "# Cleanup mod asset directory." >>"$_PACKFILE"
-	echo "rm -rf \"./$_ASSETSDIR_REL\"" >>"$_PACKFILE"
+
+	echo
 	echo "Successfully created modpack \"$_PACKNAME\"."
 }
 
 _pack_delete() {
 	_ensure_packdir
 	for _PACKNAME in $@; do
-		_PACKFILE="$_PACKDIR/${_PACKNAME}.sh"
+		_PACKFILE="$_PACKDIR/${_PACKNAME}.toml"
 		if [ ! -f "$_PACKFILE" ]; then
 			echo "No such modpack \"$_PACKNAME\"!" >&2
 			continue
 		fi
-		_PACKLOG="$_PACKDIR/${_PACKNAME}.log"
-		rm -rf "$_PACKFILE" "$_PACKLOG"
+		rm -rf "$_PACKFILE"
 		echo "Successfully deleted modpack \"$_PACKNAME\"."
 	done
 }
 
 _pack_edit() {
-	_PACKFILE="$_PACKDIR/$1.sh"
+	_PACKFILE="$_PACKDIR/$1.toml"
 	if [ ! -f "$_PACKFILE" ]; then
 		echo "No such modpack \"$1\"!" >&2
 		exit 1
@@ -443,30 +446,30 @@ _pack_edit() {
 }
 
 _pack_launch() {
-	_PACKFILE="$_PACKDIR/$1.sh"
+	_PACKFILE="$_PACKDIR/$1.toml"
 	if [ ! -f "$_PACKFILE" ]; then
 		echo "No such modpack \"$1\"!" >&2
 		exit 1
 	fi
-	if [ ! \( -e "$_GAMEDIR/$_MODEXEC" -o -e "$_GAMEDIR/lib/$_MRELIB" \) ]; then
+	if [ ! \( -e "$_GAMEDIR/$_MODEXEC" -o -d "$_AERDIR" \) ]; then
 		echo "Framework is not installed!" >&2
 		exit 1
 	fi
-	"$_PACKFILE"
-}
-
-_pack_log() {
-	_PACKFILE="$_PACKDIR/$1.sh"
-	if [ ! -f "$_PACKFILE" ]; then
-		echo "No such modpack \"$1\"!" >&2
-		exit 1
-	fi
-	_PACKLOG="$_PACKDIR/$1.log"
-	if [ ! -f "$_PACKLOG" ]; then
-		echo "Modpack \"$1\" does not have a runtime log!" >&2
-		exit 1
-	fi
-	"$_PAGER" "$_PACKLOG"
+	ln -sf "$_PACKFILE" "$_AERDIR/conf.toml"
+	_prep_assetsdir
+	_ensure_modsdir
+	for _MODDIR in $(find "$_MODSDIR" -maxdepth 1 -mindepth 1); do
+		_MODNAME=$(_modinfo "$_MODDIR" '.name')
+		LD_LIBRARY_PATH="$_MODDIR/lib:$LD_LIBRARY_PATH"
+		if [ -d "$_MODDIR/assets" ]; then
+			ln -sf "$_MODDIR/assets" "$_ASSETSDIR/$_MODNAME"
+		fi
+	done
+	export LD_LIBRARY_PATH="$_MREDIR/lib:$_GAMEDIR/lib:$LD_LIBRARY_PATH"
+	cd "$_GAMEDIR"
+	"./$_MODEXEC"
+	rm -f "$_AERDIR/conf.toml"
+	rm -rf "$_ASSETSDIR"
 }
 
 _usage() {
@@ -516,8 +519,6 @@ _usage() {
 	echo "		Edit the contents of a modpack."
 	echo "	pack-launch <pack_name>"
 	echo "		Launch a modpack."
-	echo "	pack-log <pack_name>"
-	echo "		Display a modpack's most recent runtime log."
 	echo
 	echo "miscellaneous operations:"
 	echo "	help"
@@ -655,14 +656,6 @@ case "$1" in
 			exit 1
 		fi
 		_pack_launch $2
-		;;
-
-	'pack-log')
-		if [ $# -lt 2 ]; then
-			echo "Argument \"pack_name\" is required!" >&2
-			exit 1
-		fi
-		_pack_log $2
 		;;
 
 	# Miscellaneous operations.
