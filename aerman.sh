@@ -19,8 +19,6 @@
 
 _VERSION="0.1.0"
 
-_DEPS="jq rsync tar"
-
 _SCRIPT="$0"
 _SCRIPTNAME="$(basename "$_SCRIPT")"
 
@@ -28,8 +26,8 @@ _NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 _DEFAULT_GAMEDIR_RAW='$HOME/.local/share/Steam/steamapps/common/HyperLightDrifter'
 _DEFAULT_GAMEDIR="$(eval echo "$_DEFAULT_GAMEDIR_RAW")"
-if [ -n "$AERMAN_GAMEDIR" ]; then
-	_GAMEDIR="$AERMAN_GAMEDIR"
+if [ -n "$AER_GAMEDIR" ]; then
+	_GAMEDIR="$AER_GAMEDIR"
 else
 	_GAMEDIR="$_DEFAULT_GAMEDIR"
 fi
@@ -75,14 +73,13 @@ _EXECDIFF="${_ORIGEXEC}Diff"
 # Utility functions.
 
 _ensure_deps() {
-	for _DEP in $_DEPS; do
+	for _DEP in $@; do
 		which $_DEP 1>/dev/null 2>&1
 		if [ ! $? -eq 0 ]; then
-			echo "This script requires \"$_DEP\" to function!" >&2
-			return 1
+			echo "This command requires \"$_DEP\" to function!" >&2
+			exit 1
 		fi
 	done
-	return 0
 }
 
 _ensure_modsdir() {
@@ -472,6 +469,40 @@ _pack_launch() {
 	rm -rf "$_ASSETSDIR"
 }
 
+_mdk_launch() {
+	_MDKDIR="$1"
+	if [ ! -d "$_MDKDIR" ]; then
+		echo "No such mod directory \"$_MDKDIR\"!" >&2
+		exit 1
+	fi
+	if [ ! \( -e "$_GAMEDIR/$_MODEXEC" -o -d "$_AERDIR" \) ]; then
+		echo "Framework is not installed!" >&2
+		exit 1
+	fi
+	_MODNAME=$(_modinfo "$_MDKDIR" '.name')
+	echo "mre.mods = [\"$_MODNAME\"]" >"$_AERDIR/conf.toml"
+	if [ -d "$_MDKDIR/assets" ]; then
+		_prep_assetsdir
+		ln -sf "$_MDKDIR/assets" "$_ASSETSDIR/$_MODNAME"
+	fi
+	LD_LIBRARY_PATH="$_MDKDIR/build_debug:$LD_LIBRARY_PATH"
+	export LD_LIBRARY_PATH="$_MREDIR/lib:$_GAMEDIR/lib:$LD_LIBRARY_PATH"
+	cd "$_GAMEDIR"
+	case "$2" in
+		'server')
+			gdbserver localhost:2345 "./$_MODEXEC"
+			;;
+		'debug')
+			gdb "./$_MODEXEC"
+			;;
+		*)
+			"./$_MODEXEC"
+			;;
+	esac
+	rm -f "$_AERDIR/conf.toml"
+	rm -rf "$_ASSETSDIR"
+}
+
 _usage() {
 	echo "usage: $_SCRIPTNAME <operation> [...]"
 	echo
@@ -520,6 +551,14 @@ _usage() {
 	echo "	pack-launch <pack_name>"
 	echo "		Launch a modpack."
 	echo
+	echo "mod development kit operations:"
+	echo "	mdk-launch [mod_directory]"
+	echo "		Launch the debug build of a mod."
+	echo "	mdk-debug [mod_directory]"
+	echo "		Launch and debug the debug build of a mod."
+	echo "	mdk-debug-server [mod_directory]"
+	echo "		Launch a debug server for the debug build of a mod."
+	echo
 	echo "miscellaneous operations:"
 	echo "	help"
 	echo "		Display this help message."
@@ -527,7 +566,7 @@ _usage() {
 	echo "		Display the version of \"$_SCRIPTNAME\"."
 	echo
 	echo "environment:"
-	echo "	AERMAN_GAMEDIR"
+	echo "	AER_GAMEDIR"
 	echo "		Hyper Light Drifter game directory."
 	echo "		Defaults to \"$_DEFAULT_GAMEDIR_RAW\"."
 	echo "		Currently set to \"$_GAMEDIR\"."
@@ -547,14 +586,12 @@ _version() {
 
 
 
-# Check that dependencies are met.
-_ensure_deps || exit 1
-
 # Determine operation.
 case "$1" in
 
 	# Framework operations.
 	'framework-patch-install')
+		_ensure_deps rsync
 		if [ $# -lt 2 ]; then
 			echo "Argument \"patch_archive\" is required!" >&2
 			exit 1
@@ -588,10 +625,12 @@ case "$1" in
 
 	# Mod operations.
 	'mod-list')
+		_ensure_deps jq
 		_mod_list
 		;;
 
 	'mod-install')
+		_ensure_deps jq
 		if [ $# -lt 2 ]; then
 			echo "Argument \"mod_name\" is required!" >&2
 			exit 1
@@ -601,6 +640,7 @@ case "$1" in
 		;;
 
 	'mod-uninstall')
+		_ensure_deps jq
 		if [ $# -lt 2 ]; then
 			echo "Argument \"mod_name\" is required!" >&2
 			exit 1
@@ -610,6 +650,7 @@ case "$1" in
 		;;
 
 	'mod-info')
+		_ensure_deps jq
 		if [ $# -lt 2 ]; then
 			echo "Argument \"mod_name\" is required!" >&2
 			exit 1
@@ -624,6 +665,7 @@ case "$1" in
 		;;
 
 	'pack-create')
+		_ensure_deps jq
 		if [ $# -lt 2 ]; then
 			echo "Argument \"pack_name\" is required!" >&2
 			exit 1
@@ -651,11 +693,40 @@ case "$1" in
 		;;
 
 	'pack-launch')
+		_ensure_deps jq
 		if [ $# -lt 2 ]; then
 			echo "Argument \"pack_name\" is required!" >&2
 			exit 1
 		fi
 		_pack_launch $2
+		;;
+
+	# Mod development kit operations.
+	'mdk-launch')
+		_ensure_deps jq
+		if [ $# -lt 2 ]; then
+			_mdk_launch "$PWD"
+		else
+			_mdk_launch "$2"
+		fi
+		;;
+
+	'mdk-debug')
+		_ensure_deps gdb jq
+		if [ $# -lt 2 ]; then
+			_mdk_launch "$PWD" "debug"
+		else
+			_mdk_launch "$2" "debug"
+		fi
+		;;
+
+	'mdk-debug-server')
+		_ensure_deps gdb jq
+		if [ $# -lt 2 ]; then
+			_mdk_launch "$PWD" "server"
+		else
+			_mdk_launch "$2" "server"
+		fi
 		;;
 
 	# Miscellaneous operations.
