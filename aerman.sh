@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2020 Garrett Fairburn <garrett@fairburn.dev>
+# Copyright 2021 Garrett Fairburn <garrett@fairburn.dev>
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,10 +17,13 @@
 
 # Constants.
 
-_VERSION="0.1.0"
+_VERSION="1.0.0"
 
-_SCRIPT="$0"
+_SCRIPT="$(which "$0")"
 _SCRIPTNAME="$(basename "$_SCRIPT")"
+_SCRIPTDIR="$(dirname "$_SCRIPT")"
+
+_DEPS="jq rsync tar"
 
 _NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
@@ -49,6 +52,9 @@ fi
 _AERDIR_REL="aer"
 _AERDIR="$_GAMEDIR/$_AERDIR_REL"
 
+_PATCHDIR_REL="$_AERDIR_REL/patch"
+_PATCHDIR="$_GAMEDIR/$_PATCHDIR_REL"
+
 _MREDIR_REL="$_AERDIR_REL/mre"
 _MREDIR="$_GAMEDIR/$_MREDIR_REL"
 
@@ -73,11 +79,15 @@ _EXECDIFF="${_ORIGEXEC}Diff"
 # Utility functions.
 
 _ensure_deps() {
-	for _DEP in $@; do
-		which $_DEP 1>/dev/null 2>&1
-		if [ ! $? -eq 0 ]; then
-			echo "This command requires \"$_DEP\" to function!" >&2
-			exit 1
+	for _DEP in $_DEPS; do
+		_DEPVAR=_${_DEP^^}
+		declare -g $_DEPVAR="$(which $_DEP 2>/dev/null)"
+		if [ -z "${!_DEPVAR}" ]; then
+			declare -g $_DEPVAR="$(which "$_SCRIPTDIR/bin/$_DEP" 2>/dev/null)"
+			if [ -z "${!_DEPVAR}" ]; then
+				echo "This command requires \"$_DEP\" to function!" >&2
+				exit 1
+			fi
 		fi
 	done
 }
@@ -102,7 +112,7 @@ _prep_assetsdir() {
 
 _modinfo() {
 	_MODINFO="$1/ModInfo.json"
-	if jq -rcMe "$2" "$_MODINFO" 2>/dev/null; then
+	if "$_JQ" -rcMe "$2" "$_MODINFO" 2>/dev/null; then
 		return 0
 	else
 		return 1
@@ -114,21 +124,22 @@ _modinfo() {
 # Operations.
 
 _framework_patch_install() {
-	if [ -e "$_GAMEDIR/$_MODEXEC" ]; then
+	if [ -d "$_PATCHDIR" ]; then
 		echo "Patch is already installed!" >&2
 		exit 1
 	fi
-	rm -rf "$_GAMEDIR/$_MODEXEC"
+	rm -rf "$_PATCHDIR"
 	_prep_tmpdir
 	_PATCHARCHIVE="$1"
-	tar -C "$_TMPDIR" -xf "$_PATCHARCHIVE" 2>/dev/null
+	"$_TAR" -C "$_TMPDIR" -xf "$_PATCHARCHIVE" 2>/dev/null
 	if [ ! $? -eq 0 ]; then
 		echo "\"$_PATCHARCHIVE\" is not a valid patch archive!" >&2
 		exit 1
 	fi
 	_STAGEDIR="$(find "$_TMPDIR" -maxdepth 1 -mindepth 1)"
+	mv "$_STAGEDIR" "$_PATCHDIR"
 	cp "$_GAMEDIR/$_ORIGEXEC" "$_GAMEDIR/$_MODEXEC"
-	rsync --read-batch="$_STAGEDIR/$_EXECDIFF" "$_GAMEDIR/$_MODEXEC" 2>/dev/null
+	"$_RSYNC" --read-batch="$_PATCHDIR/$_EXECDIFF" "$_GAMEDIR/$_MODEXEC" 2>/dev/null
 	if [ ! $? -eq 0 ]; then
 		echo "Could not patch executable!" >&2
 		rm "$_GAMEDIR/$_MODEXEC"
@@ -138,11 +149,12 @@ _framework_patch_install() {
 }
 
 _framework_patch_uninstall() {
-	if [ ! -e "$_GAMEDIR/$_MODEXEC" ]; then
+	if [ ! -d "$_MREDIR" ]; then
 		echo "Patch is not installed!" >&2
 		exit 1
 	fi
 	rm -f "$_GAMEDIR/$_MODEXEC"
+	rm -rf "$_PATCHDIR"
 	echo "Successfully uninstalled patch."
 }
 
@@ -154,7 +166,7 @@ _framework_mre_install() {
 	rm -rf "$_MREDIR"
 	_prep_tmpdir
 	_MREARCHIVE="$1"
-	tar -C "$_TMPDIR" -xf "$_MREARCHIVE" 2>/dev/null
+	"$_TAR" -C "$_TMPDIR" -xf "$_MREARCHIVE" 2>/dev/null
 	if [ ! $? -eq 0 ]; then
 		echo "\"$_MREARCHIVE\" is not a valid MRE archive!" >&2
 		exit 1
@@ -173,7 +185,7 @@ _framework_mre_uninstall() {
 	echo "Successfully uninstalled MRE."
 }
 
-_framework_purge() {
+_framework_uninstall() {
 	echo "Are you sure you wish to uninstall the AER modding framework"
 	echo "along with all mods and modpacks?"
 	read -n 1 -rp "[N/y] " _INPUT
@@ -191,7 +203,7 @@ _framework_purge() {
 }
 
 _framework_status() {
-	test -e "$_GAMEDIR/$_MODEXEC"
+	test -d "$_PATCHDIR"
 	_PATCH_INSTALLED=$?
 	test -d "$_MREDIR"
 	_MRE_INSTALLED=$?
@@ -227,7 +239,7 @@ _mod_list() {
 _mod_install() {
 	_prep_tmpdir
 	for _MODARCHIVE in $@; do
-		tar -C "$_TMPDIR" -xf "$_MODARCHIVE" 2>/dev/null
+		"$_TAR" -C "$_TMPDIR" -xf "$_MODARCHIVE" 2>/dev/null
 		if [ ! $? -eq 0 ]; then
 			echo "\"$_MODARCHIVE\" is not a valid mod archive!" >&2
 			continue
@@ -303,7 +315,7 @@ _mod_uninstall() {
 	done
 }
 
-_mod_info() {
+_mod_status() {
 	for _MODNAME in $@; do
 		_MODDIR="$_MODSDIR/$_MODNAME"
 		if [ ! -d "$_MODDIR" ]; then
@@ -376,7 +388,7 @@ _pack_create() {
 		if [ ! $? -eq 0 ]; then
 			continue
 		fi
-		_NUMCONF=$(jq -rcM '. | length' <<<"$_MODCONF")
+		_NUMCONF=$("$_JQ" -rcM '. | length' <<<"$_MODCONF")
 		if [ $_NUMCONF -eq 0 ]; then
 			continue
 		fi
@@ -389,18 +401,18 @@ _pack_create() {
 		echo >>"$_PACKFILE"
 		echo "[$_MODNAME]" >>"$_PACKFILE"
 		for _CONFIDX in $(seq 0 $(($_NUMCONF - 1))); do
-			_CONFELEM="$(jq -rcM ".[$_CONFIDX]" <<<"$_MODCONF")"
+			_CONFELEM="$("$_JQ" -rcM ".[$_CONFIDX]" <<<"$_MODCONF")"
 			echo >>"$_PACKFILE"
-			if _CONFDESC="$(jq -rcMe '.description' <<<"$_CONFELEM")"; then
+			if _CONFDESC="$("$_JQ" -rcMe '.description' <<<"$_CONFELEM")"; then
 				echo "# $_CONFDESC" >>"$_PACKFILE"
 			fi
-			_CONFKEY="$(jq -rcM '.key' <<<"$_CONFELEM")"
-			_NUMKEY=$(jq -rcM '. | length' <<<"$_CONFKEY")
-			_BUILTKEY="$(jq -rcM ".[0]" <<<"$_CONFKEY")"
+			_CONFKEY="$("$_JQ" -rcM '.key' <<<"$_CONFELEM")"
+			_NUMKEY=$("$_JQ" -rcM '. | length' <<<"$_CONFKEY")
+			_BUILTKEY="$("$_JQ" -rcM ".[0]" <<<"$_CONFKEY")"
 			for _KEYIDX in $(seq 1 $(($_NUMKEY - 1))); do
-				_BUILTKEY="$_BUILTKEY.$(jq -rcM ".[$_KEYIDX]" <<<"$_CONFKEY")"
+				_BUILTKEY="$_BUILTKEY.$("$_JQ" -rcM ".[$_KEYIDX]" <<<"$_CONFKEY")"
 			done
-			_CONFDEF="$(jq -cM '.default' <<<"$_CONFELEM")"
+			_CONFDEF="$("$_JQ" -cM '.default' <<<"$_CONFELEM")"
 			if [ "$_CONFDEF" = "null" ]; then
 				_CONFDEF=""
 			fi
@@ -420,7 +432,7 @@ _pack_create() {
 	echo "Successfully created modpack \"$_PACKNAME\"."
 }
 
-_pack_delete() {
+_pack_uninstall() {
 	_ensure_packdir
 	for _PACKNAME in $@; do
 		_PACKFILE="$_PACKDIR/${_PACKNAME}.toml"
@@ -429,7 +441,7 @@ _pack_delete() {
 			continue
 		fi
 		rm -rf "$_PACKFILE"
-		echo "Successfully deleted modpack \"$_PACKNAME\"."
+		echo "Successfully uninstalled modpack \"$_PACKNAME\"."
 	done
 }
 
@@ -442,13 +454,13 @@ _pack_edit() {
 	"$_EDITOR" "$_PACKFILE"
 }
 
-_pack_launch() {
+_pack_run() {
 	_PACKFILE="$_PACKDIR/$1.toml"
 	if [ ! -f "$_PACKFILE" ]; then
 		echo "No such modpack \"$1\"!" >&2
 		exit 1
 	fi
-	if [ ! \( -e "$_GAMEDIR/$_MODEXEC" -o -d "$_AERDIR" \) ]; then
+	if [ ! \( -d "$_PATCHDIR" -o -d "$_MREDIR" \) ]; then
 		echo "Framework is not installed!" >&2
 		exit 1
 	fi
@@ -475,18 +487,18 @@ _usage() {
 	echo "Management tool for the AER modding framework."
 	echo
 	echo "framework operations:"
-	echo "	framework-patch-install <patch_archive>"
+	echo "	fpi, framework-patch-install <patch_archive>"
 	echo "		Install the AER patch."
-	echo "	framework-patch-uninstall"
+	echo "	fpu, framework-patch-uninstall"
 	echo "		Uninstall the AER patch."
-	echo "	framework-mre-install <mre_archive>"
+	echo "	fmi, framework-mre-install <mre_archive>"
 	echo "		Install the AER mod runtime environment."
-	echo "	framework-mre-uninstall"
+	echo "	fmu, framework-mre-uninstall"
 	echo "		Uninstall the AER mod runtime environment."
-	echo "	framework-purge"
+	echo "	fu, framework-uninstall"
 	echo "		Uninstall the AER modding framework along with all"
 	echo "		mods and modpacks."
-	echo "	framework-status"
+	echo "	fs, framework-status"
 	echo "		Display the status of the AER modding framework installation."
 	echo "		Returns:"
 	echo "			0 if the framework is completely installed."
@@ -495,32 +507,32 @@ _usage() {
 	echo "			3 if the MRE is installed but not the patch."
 	echo
 	echo "mod operations:"
-	echo "	mod-list"
+	echo "	ml, mod-list"
 	echo "		List installed mods."
-	echo "	mod-install <mod_archive [...]>"
+	echo "	mi, mod-install <mod_archive [...]>"
 	echo "		Install one or more mods from mod archives."
-	echo "	mod-uninstall <mod_name [...]>"
+	echo "	mu, mod-uninstall <mod_name [...]>"
 	echo "		Uninstall one or more mods."
-	echo "	mod-info <mod_name [...]>"
+	echo "	ms mod-status <mod_name [...]>"
 	echo "		Display information about one or more mods."
 	echo
 	echo "modpack operations:"
-	echo "	pack-list"
+	echo "	pl, pack-list"
 	echo "		List created modpacks."
-	echo "	pack-create <pack_name> [mod_name [...]]"
+	echo "	pc, pack-create <pack_name> [mod_name [...]]"
 	echo "		Create a modpack with an optional number of mods."
 	echo "		Note that the order of the mods given determines mod priority."
-	echo "	pack-delete <pack_name [...]>"
-	echo "		Delete one or more modpacks."
-	echo "	pack-edit <pack_name>"
+	echo "	pu, pack-uninstall <pack_name [...]>"
+	echo "		Uninstall one or more modpacks."
+	echo "	pe, pack-edit <pack_name>"
 	echo "		Edit the contents of a modpack."
-	echo "	pack-launch <pack_name>"
-	echo "		Launch a modpack."
+	echo "	pr, pack-run <pack_name>"
+	echo "		Run a modpack."
 	echo
 	echo "miscellaneous operations:"
-	echo "	help"
+	echo "	h, help"
 	echo "		Display this help message."
-	echo "	version"
+	echo "	v, version"
 	echo "		Display the version of \"$_SCRIPTNAME\"."
 	echo
 	echo "environment:"
@@ -544,12 +556,14 @@ _version() {
 
 
 
+# Search for dependencies.
+_ensure_deps
+
 # Determine operation.
 case "$1" in
 
 	# Framework operations.
-	'framework-patch-install')
-		_ensure_deps rsync
+	'fpi'|'framework-patch-install')
 		if [ $# -lt 2 ]; then
 			echo "Argument \"patch_archive\" is required!" >&2
 			exit 1
@@ -557,11 +571,11 @@ case "$1" in
 		_framework_patch_install "$2"
 		;;
 
-	'framework-patch-uninstall')
+	'fpu'|'framework-patch-uninstall')
 		_framework_patch_uninstall
 		;;
 
-	'framework-mre-install')
+	'fmi'|'framework-mre-install')
 		if [ $# -lt 2 ]; then
 			echo "Argument \"mre_archive\" is required!" >&2
 			exit 1
@@ -569,26 +583,24 @@ case "$1" in
 		_framework_mre_install "$2"
 		;;
 
-	'framework-mre-uninstall')
+	'fmu'|'framework-mre-uninstall')
 		_framework_mre_uninstall
 		;;
 
-	'framework-purge')
-		_framework_purge
+	'fu'|'framework-uninstall')
+		_framework_uninstall
 		;;
 
-	'framework-status')
+	'fs'|'framework-status')
 		_framework_status
 		;;
 
 	# Mod operations.
-	'mod-list')
-		_ensure_deps jq
+	'ml'|'mod-list')
 		_mod_list
 		;;
 
-	'mod-install')
-		_ensure_deps jq
+	'mi'|'mod-install')
 		if [ $# -lt 2 ]; then
 			echo "Argument \"mod_name\" is required!" >&2
 			exit 1
@@ -597,8 +609,7 @@ case "$1" in
 		_mod_install $@
 		;;
 
-	'mod-uninstall')
-		_ensure_deps jq
+	'mu'|'mod-uninstall')
 		if [ $# -lt 2 ]; then
 			echo "Argument \"mod_name\" is required!" >&2
 			exit 1
@@ -607,23 +618,21 @@ case "$1" in
 		_mod_uninstall $@
 		;;
 
-	'mod-info')
-		_ensure_deps jq
+	'ms'|'mod-status')
 		if [ $# -lt 2 ]; then
 			echo "Argument \"mod_name\" is required!" >&2
 			exit 1
 		fi
 		shift
-		_mod_info $@
+		_mod_status $@
 		;;
 
 	# Modpack operations.
-	'pack-list')
+	'pl'|'pack-list')
 		_pack_list
 		;;
 
-	'pack-create')
-		_ensure_deps jq
+	'pc'|'pack-create')
 		if [ $# -lt 2 ]; then
 			echo "Argument \"pack_name\" is required!" >&2
 			exit 1
@@ -633,16 +642,16 @@ case "$1" in
 		_pack_create $_PACKNAME $@
 		;;
 
-	'pack-delete')
+	'pu'|'pack-uninstall')
 		if [ $# -lt 2 ]; then
 			echo "Argument \"pack_name\" is required!" >&2
 			exit 1
 		fi
 		shift
-		_pack_delete $@
+		_pack_uninstall $@
 		;;
 
-	'pack-edit')
+	'pe'|'pack-edit')
 		if [ $# -lt 2 ]; then
 			echo "Argument \"pack_name\" is required!" >&2
 			exit 1
@@ -650,17 +659,16 @@ case "$1" in
 		_pack_edit $2
 		;;
 
-	'pack-launch')
-		_ensure_deps jq
+	'pr'|'pack-run')
 		if [ $# -lt 2 ]; then
 			echo "Argument \"pack_name\" is required!" >&2
 			exit 1
 		fi
-		_pack_launch $2
+		_pack_run $2
 		;;
 
 	# Miscellaneous operations.
-	'version')
+	'v'|'version')
 		_version
 		;;
 
