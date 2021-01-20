@@ -19,7 +19,7 @@
 
 _VERSION="1.0.0"
 
-_SCRIPT="$(which "$0")"
+_SCRIPT="$(readlink -f "$(which "$0")")"
 _SCRIPTNAME="$(basename "$_SCRIPT")"
 _SCRIPTDIR="$(dirname "$_SCRIPT")"
 
@@ -149,7 +149,7 @@ _framework_patch_install() {
 }
 
 _framework_patch_uninstall() {
-	if [ ! -d "$_MREDIR" ]; then
+	if [ ! -d "$_PATCHDIR" ]; then
 		echo "Patch is not installed!" >&2
 		exit 1
 	fi
@@ -237,8 +237,8 @@ _mod_list() {
 }
 
 _mod_install() {
-	_prep_tmpdir
 	for _MODARCHIVE in $@; do
+		_prep_tmpdir
 		"$_TAR" -C "$_TMPDIR" -xf "$_MODARCHIVE" 2>/dev/null
 		if [ ! $? -eq 0 ]; then
 			echo "\"$_MODARCHIVE\" is not a valid mod archive!" >&2
@@ -376,7 +376,7 @@ _pack_create() {
 		echo -e "\t\"$_MODNAME\"," >>"$_PACKFILE"
 	done
 	echo "]" >>"$_PACKFILE"
-	echo -n "."
+	echo "."
 	for _MODNAME in $@; do
 		_MODDIR="$_MODSDIR/$_MODNAME"
 		if [ ! -d "$_MODDIR" ]; then
@@ -386,10 +386,12 @@ _pack_create() {
 		fi
 		_MODCONF="$(_modinfo "$_MODDIR" '.configuration')"
 		if [ ! $? -eq 0 ]; then
+			echo "."
 			continue
 		fi
 		_NUMCONF=$("$_JQ" -rcM '. | length' <<<"$_MODCONF")
 		if [ $_NUMCONF -eq 0 ]; then
+			echo "."
 			continue
 		fi
 		echo >>"$_PACKFILE"
@@ -424,11 +426,10 @@ _pack_create() {
 					echo "#$_BUILTKEY = $_CONFDEF">>"$_PACKFILE"
 					;;
 			esac
-			echo -n "."
 		done
+		echo "."
 	done
 
-	echo
 	echo "Successfully created modpack \"$_PACKNAME\"."
 }
 
@@ -513,7 +514,7 @@ _usage() {
 	echo "		Install one or more mods from mod archives."
 	echo "	mu, mod-uninstall <mod_name [...]>"
 	echo "		Uninstall one or more mods."
-	echo "	ms mod-status <mod_name [...]>"
+	echo "	ms, mod-status <mod_name [...]>"
 	echo "		Display information about one or more mods."
 	echo
 	echo "modpack operations:"
@@ -532,6 +533,8 @@ _usage() {
 	echo "miscellaneous operations:"
 	echo "	h, help"
 	echo "		Display this help message."
+	echo "	g, gui"
+	echo "		Launch the $_SCRIPTNAME GUI."
 	echo "	v, version"
 	echo "		Display the version of \"$_SCRIPTNAME\"."
 	echo
@@ -548,6 +551,10 @@ _usage() {
 	echo "		Editing program used to modify text."
 	echo "		Defaults to \"$_DEFAULT_EDITOR\"."
 	echo "		Currently set to \"$_EDITOR\"."
+}
+
+_gui() {
+	"$_SCRIPTDIR/bin/gui.sh" "$_SCRIPT"
 }
 
 _version() {
@@ -668,6 +675,9 @@ case "$1" in
 		;;
 
 	# Miscellaneous operations.
+	'g'|'gui')
+		_gui
+		;;
 	'v'|'version')
 		_version
 		;;
