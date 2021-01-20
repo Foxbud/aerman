@@ -136,20 +136,28 @@ _framework_menu_dialog() {
 		--hide-column=1 \
 		--column="key" \
 		--column="desc" \
-		"fs" "Display the Status of the Framework" \
+		"fci" "Install the Latest Framework Patch and Mod Runtime Environment" \
+		"fcu" "Uninstall the Framework Patch and Mod Runtime Environment" \
+		"fcp" "Uninstall all Components of the AER Framework" \
 		"fpi" "Install the Framework Patch" \
 		"fpu" "Uninstall the Framework Patch" \
 		"fmi" "Install the Mod Runtime Environment" \
 		"fmu" "Uninstall the Mod Runtime Environment" \
-		"fu" "Uninstall all Components of the AER Framework" \
+		"fs" "Display the Status of the Framework" \
 		)"
 	if [ ! $? -eq 0 ]; then
 		echo "_main_menu_dialog"
 		return
 	fi
 	case "$_INPUT" in
-		"fs")
-			echo "_framework_status_dialog"
+		"fci")
+			echo "_framework_complete_install_dialog"
+			;;
+		"fcu")
+			echo "_framework_complete_uninstall_dialog"
+			;;
+		"fcp")
+			echo "_framework_complete_purge_dialog"
 			;;
 		"fpi")
 			echo "_framework_patch_install_dialog"
@@ -163,8 +171,8 @@ _framework_menu_dialog() {
 		"fmu")
 			echo "_framework_mre_uninstall_dialog"
 			;;
-		"fu")
-			echo "_framework_uninstall_dialog"
+		"fs")
+			echo "_framework_status_dialog"
 			;;
 		*)
 			echo "_framework_menu_dialog"
@@ -172,13 +180,59 @@ _framework_menu_dialog() {
 	esac
 }
 
-_framework_status_dialog() {
-	zenity \
+_framework_complete_install_dialog() {
+	if zenity \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
-		--info \
-		--ok-label="$_BACK" \
-		--text="$(_dialog_display "Framework Status" \
-		"$(_aerman fs)")"
+		--question \
+		--ok-label="$_GO" \
+		--cancel-label="$_BACK" \
+		--text="$(_dialog_display "Framework Install" \
+		"Are you sure you want to download and install the latest versions of the framework patch and MRE?")"
+	then
+		if _AERMAN_OUT="$(_aerman fci 2>&1)"; then
+			_success_popup "$_AERMAN_OUT"
+		else
+			_warning_popup "$_AERMAN_OUT"
+		fi
+	fi
+
+	echo "_framework_menu_dialog"
+}
+
+_framework_complete_uninstall_dialog() {
+	if zenity \
+		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
+		--question \
+		--ok-label="$_GO" \
+		--cancel-label="$_BACK" \
+		--text="$(_dialog_display "Framework Uninstall" \
+		"Are you sure you want to uninstall the framework patch and MRE?")"
+	then
+		if _AERMAN_OUT="$(_aerman fcu 2>&1)"; then
+			_success_popup "$_AERMAN_OUT"
+		else
+			_warning_popup "$_AERMAN_OUT"
+		fi
+	fi
+
+	echo "_framework_menu_dialog"
+}
+
+_framework_complete_purge_dialog() {
+	if zenity \
+		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
+		--question \
+		--ok-label="$_GO" \
+		--cancel-label="$_BACK" \
+		--text="$(_dialog_display "Framework Purge" \
+		"Are you sure you want to uninstall all components the AER framework including mods and modpacks?")"
+	then
+		if _AERMAN_OUT="$(_aerman fcp <<<"y" 2>&1 | tail -n 1)"; then
+			_success_popup "$_AERMAN_OUT"
+		else
+			_warning_popup "$_AERMAN_OUT"
+		fi
+	fi
 
 	echo "_framework_menu_dialog"
 }
@@ -186,16 +240,48 @@ _framework_status_dialog() {
 _framework_patch_install_dialog() {
 	_INPUT="$(zenity \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
-		--file-selection \
-		--file-filter="*.tar.xz *.tar.gz" \
+		--list \
+		--ok-label="$_GO" \
+		--cancel-label="$_BACK" \
+		--text="$(_dialog_display "Patch Install" \
+			"Which patch archive would you like to install?")" \
+		--hide-header \
+		--hide-column=1 \
+		--column="key" \
+		--column="desc" \
+		"r" "Download the Latest Version" \
+		"a" "Use Your Own" \
 		)"
-	if _AERMAN_OUT="$(_aerman fpi "$_INPUT" 2>&1)"; then
-		_success_popup "$_AERMAN_OUT"
-	else
-		_warning_popup "$_AERMAN_OUT"
+	if [ ! $? -eq 0 ]; then
+		echo "_framework_menu_dialog"
+		return
 	fi
-
-	echo "_framework_menu_dialog"
+	case "$_INPUT" in
+		"r")
+			if _AERMAN_OUT="$(_aerman fpi 2>&1)"; then
+				_success_popup "$_AERMAN_OUT"
+			else
+				_warning_popup "$_AERMAN_OUT"
+			fi
+			echo "_framework_menu_dialog"
+			;;
+		"a")
+			_INPUT="$(zenity \
+				--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
+				--file-selection \
+				--file-filter="*.tar.xz *.tar.gz" \
+				)"
+			if _AERMAN_OUT="$(_aerman fpi "$_INPUT" 2>&1)"; then
+				_success_popup "$_AERMAN_OUT"
+			else
+				_warning_popup "$_AERMAN_OUT"
+			fi
+			echo "_framework_menu_dialog"
+			;;
+		*)
+			echo "_framework_patch_install_dialog"
+			;;
+	esac
 }
 
 _framework_patch_uninstall_dialog() {
@@ -220,16 +306,48 @@ _framework_patch_uninstall_dialog() {
 _framework_mre_install_dialog() {
 	_INPUT="$(zenity \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
-		--file-selection \
-		--file-filter="*.tar.xz *.tar.gz" \
+		--list \
+		--ok-label="$_GO" \
+		--cancel-label="$_BACK" \
+		--text="$(_dialog_display "MRE Install" \
+			"Which MRE archive would you like to install?")" \
+		--hide-header \
+		--hide-column=1 \
+		--column="key" \
+		--column="desc" \
+		"r" "Download the Latest Version" \
+		"a" "Use Your Own" \
 		)"
-	if _AERMAN_OUT="$(_aerman fmi "$_INPUT" 2>&1)"; then
-		_success_popup "$_AERMAN_OUT"
-	else
-		_warning_popup "$_AERMAN_OUT"
+	if [ ! $? -eq 0 ]; then
+		echo "_framework_menu_dialog"
+		return
 	fi
-
-	echo "_framework_menu_dialog"
+	case "$_INPUT" in
+		"r")
+			if _AERMAN_OUT="$(_aerman fmi 2>&1)"; then
+				_success_popup "$_AERMAN_OUT"
+			else
+				_warning_popup "$_AERMAN_OUT"
+			fi
+			echo "_framework_menu_dialog"
+			;;
+		"a")
+			_INPUT="$(zenity \
+				--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
+				--file-selection \
+				--file-filter="*.tar.xz *.tar.gz" \
+				)"
+			if _AERMAN_OUT="$(_aerman fmi "$_INPUT" 2>&1)"; then
+				_success_popup "$_AERMAN_OUT"
+			else
+				_warning_popup "$_AERMAN_OUT"
+			fi
+			echo "_framework_menu_dialog"
+			;;
+		*)
+			echo "_framework_mre_install_dialog"
+			;;
+	esac
 }
 
 _framework_mre_uninstall_dialog() {
@@ -251,21 +369,13 @@ _framework_mre_uninstall_dialog() {
 	echo "_framework_menu_dialog"
 }
 
-_framework_uninstall_dialog() {
-	if zenity \
+_framework_status_dialog() {
+	zenity \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
-		--question \
-		--ok-label="$_GO" \
-		--cancel-label="$_BACK" \
-		--text="$(_dialog_display "Framework Uninstall" \
-		"Are you sure you want to uninstall all components the AER framework?")"
-	then
-		if _AERMAN_OUT="$(_aerman fu 2>&1)"; then
-			_success_popup "$_AERMAN_OUT"
-		else
-			_warning_popup "$_AERMAN_OUT"
-		fi
-	fi
+		--info \
+		--ok-label="$_BACK" \
+		--text="$(_dialog_display "Framework Status" \
+		"$(_aerman fs)")"
 
 	echo "_framework_menu_dialog"
 }

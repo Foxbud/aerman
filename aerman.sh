@@ -23,9 +23,23 @@ _SCRIPT="$(readlink -f "$(which "$0")")"
 _SCRIPTNAME="$(basename "$_SCRIPT")"
 _SCRIPTDIR="$(dirname "$_SCRIPT")"
 
-_DEPS="jq rsync tar"
+_DEPS="jq rsync sha256sum tar"
 
 _NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+_DEFAULT_PATCH_REPO='https://api.github.com/repos/Foxbud/aerpatch'
+if [ -n "$AER_PATCH_REPO" ]; then
+	_PATCH_REPO="$AER_PATCH_REPO"
+else
+	_PATCH_REPO="$_DEFAULT_PATCH_REPO"
+fi
+
+_DEFAULT_MRE_REPO='https://api.github.com/repos/Foxbud/libaermre'
+if [ -n "$AER_MRE_REPO" ]; then
+	_MRE_REPO="$AER_MRE_REPO"
+else
+	_MRE_REPO="$_DEFAULT_MRE_REPO"
+fi
 
 _DEFAULT_GAMEDIR_RAW='$HOME/.local/share/Steam/steamapps/common/HyperLightDrifter'
 _DEFAULT_GAMEDIR="$(eval echo "$_DEFAULT_GAMEDIR_RAW")"
@@ -119,73 +133,30 @@ _modinfo() {
 	fi
 }
 
+_download_latest() {
+	pushd "$2" >/dev/null
+	wget "$(curl -s "$1/releases/latest" | grep 'browser_' | cut -d\" -f4)" >/dev/null 2>&1
+	_ERR=$?
+	popd >/dev/null
+
+	return $_ERR
+}
+
 
 
 # Operations.
 
-_framework_patch_install() {
-	if [ -d "$_PATCHDIR" ]; then
-		echo "Patch is already installed!" >&2
-		exit 1
-	fi
-	rm -rf "$_PATCHDIR"
-	_prep_tmpdir
-	_PATCHARCHIVE="$1"
-	"$_TAR" -C "$_TMPDIR" -xf "$_PATCHARCHIVE" 2>/dev/null
-	if [ ! $? -eq 0 ]; then
-		echo "\"$_PATCHARCHIVE\" is not a valid patch archive!" >&2
-		exit 1
-	fi
-	_STAGEDIR="$(find "$_TMPDIR" -maxdepth 1 -mindepth 1)"
-	mv "$_STAGEDIR" "$_PATCHDIR"
-	cp "$_GAMEDIR/$_ORIGEXEC" "$_GAMEDIR/$_MODEXEC"
-	"$_RSYNC" --read-batch="$_PATCHDIR/$_EXECDIFF" "$_GAMEDIR/$_MODEXEC" 2>/dev/null
-	if [ ! $? -eq 0 ]; then
-		echo "Could not patch executable!" >&2
-		rm "$_GAMEDIR/$_MODEXEC"
-		exit 1
-	fi
-	echo "Successfully installed patch."
+_framework_complete_install() {
+	_framework_patch_install
+	_framework_mre_install
 }
 
-_framework_patch_uninstall() {
-	if [ ! -d "$_PATCHDIR" ]; then
-		echo "Patch is not installed!" >&2
-		exit 1
-	fi
-	rm -f "$_GAMEDIR/$_MODEXEC"
-	rm -rf "$_PATCHDIR"
-	echo "Successfully uninstalled patch."
+_framework_complete_uninstall() {
+	_framework_patch_uninstall
+	_framework_mre_uninstall
 }
 
-_framework_mre_install() {
-	if [ -d "$_MREDIR" ]; then
-		echo "MRE is already installed!" >&2
-		exit 1
-	fi
-	rm -rf "$_MREDIR"
-	_prep_tmpdir
-	_MREARCHIVE="$1"
-	"$_TAR" -C "$_TMPDIR" -xf "$_MREARCHIVE" 2>/dev/null
-	if [ ! $? -eq 0 ]; then
-		echo "\"$_MREARCHIVE\" is not a valid MRE archive!" >&2
-		exit 1
-	fi
-	_STAGEDIR="$(find "$_TMPDIR" -maxdepth 1 -mindepth 1)"
-	mv "$_STAGEDIR" "$_MREDIR"
-	echo "Successfully installed MRE."
-}
-
-_framework_mre_uninstall() {
-	if [ ! -d "$_MREDIR" ]; then
-		echo "MRE is not installed!" >&2
-		exit 1
-	fi
-	rm -rf "$_MREDIR"
-	echo "Successfully uninstalled MRE."
-}
-
-_framework_uninstall() {
+_framework_complete_purge() {
 	echo "Are you sure you wish to uninstall the AER modding framework"
 	echo "along with all mods and modpacks?"
 	read -n 1 -rp "[N/y] " _INPUT
@@ -202,15 +173,125 @@ _framework_uninstall() {
 	echo "Successfully purged framework."
 }
 
+_framework_patch_install() {
+	# Check if already installed.
+	if [ -d "$_PATCHDIR" ]; then
+		echo "Patch is already installed!" >&2
+		exit 1
+	fi
+
+	# Determine archive source.
+	_PATCHARCHIVE=
+	_prep_tmpdir
+	# Get archive from repository.
+	if [ -z "$1" ]; then
+		_download_latest "$_PATCH_REPO" "$_TMPDIR"
+		if [ ! $? -eq 0 ]; then
+			echo "Could not download latest release of patch!" >&2
+			exit 1
+		fi
+		_PATCHARCHIVE="$(find "$_TMPDIR" -maxdepth 1 -mindepth 1 -type f)"
+	# Use existing archive.
+	else
+		_PATCHARCHIVE="$1"
+	fi
+
+	# Extract archive.
+	"$_TAR" -C "$_TMPDIR" -xf "$_PATCHARCHIVE" 2>/dev/null
+	if [ ! $? -eq 0 ]; then
+		echo "\"$_PATCHARCHIVE\" is not a valid patch archive!" >&2
+		exit 1
+	fi
+	_STAGEDIR="$(find "$_TMPDIR" -maxdepth 1 -mindepth 1 -type d)"
+
+	# Verify version compatibility.
+	pushd "$_GAMEDIR" >/dev/null
+	"$_SHA256SUM" -c "$_STAGEDIR/HyperLightDrifter.checksum.txt" >/dev/null 2>&1
+	if [ ! $? -eq 0 ]; then
+		echo "Patch is not compatible with present version of executable!" >&2
+		exit 1
+	fi
+	popd >/dev/null
+
+	# Patch executable.
+	_PATCHVER="$(cat "$_STAGEDIR/VERSION.txt")"
+	mv "$_STAGEDIR" "$_PATCHDIR"
+	cp "$_GAMEDIR/$_ORIGEXEC" "$_GAMEDIR/$_MODEXEC"
+	"$_RSYNC" --read-batch="$_PATCHDIR/$_EXECDIFF" "$_GAMEDIR/$_MODEXEC" 2>/dev/null
+	if [ ! $? -eq 0 ]; then
+		echo "Could not patch executable!" >&2
+		rm -r "$_PATCHDIR"
+		rm "$_GAMEDIR/$_MODEXEC"
+		exit 1
+	fi
+	echo "Successfully installed patch (version $_PATCHVER)."
+}
+
+_framework_patch_uninstall() {
+	if [ ! -d "$_PATCHDIR" ]; then
+		echo "Patch is not installed!" >&2
+		exit 1
+	fi
+	_PATCHVER="$(cat "$_PATCHDIR/VERSION.txt")"
+	rm -f "$_GAMEDIR/$_MODEXEC"
+	rm -rf "$_PATCHDIR"
+	echo "Successfully uninstalled patch (version $_PATCHVER)."
+}
+
+_framework_mre_install() {
+	# Check if already installed.
+	if [ -d "$_MREDIR" ]; then
+		echo "MRE is already installed!" >&2
+		exit 1
+	fi
+
+	# Determine archive source.
+	_MREARCHIVE=
+	_prep_tmpdir
+	# Get archive from repository.
+	if [ -z "$1" ]; then
+		_download_latest "$_MRE_REPO" "$_TMPDIR"
+		if [ ! $? -eq 0 ]; then
+			echo "Could not download latest release of MRE!" >&2
+			exit 1
+		fi
+		_MREARCHIVE="$(find "$_TMPDIR" -maxdepth 1 -mindepth 1 -type f)"
+	# Use existing archive.
+	else
+		_MREARCHIVE="$1"
+	fi
+
+	# Extract archive.
+	"$_TAR" -C "$_TMPDIR" -xf "$_MREARCHIVE" 2>/dev/null
+	if [ ! $? -eq 0 ]; then
+		echo "\"$_MREARCHIVE\" is not a valid MRE archive!" >&2
+		exit 1
+	fi
+	_STAGEDIR="$(find "$_TMPDIR" -maxdepth 1 -mindepth 1 -type d)"
+
+	# Install MRE.
+	_MREVER="$(cat "$_STAGEDIR/VERSION.txt")"
+	mv "$_STAGEDIR" "$_MREDIR"
+	echo "Successfully installed MRE (version $_MREVER)."
+}
+
+_framework_mre_uninstall() {
+	if [ ! -d "$_MREDIR" ]; then
+		echo "MRE is not installed!" >&2
+		exit 1
+	fi
+	_MREVER="$(cat "$_MREDIR/VERSION.txt")"
+	rm -rf "$_MREDIR"
+	echo "Successfully uninstalled MRE (version $_MREVER)."
+}
+
 _framework_status() {
-	test -d "$_PATCHDIR"
-	_PATCH_INSTALLED=$?
-	test -d "$_MREDIR"
-	_MRE_INSTALLED=$?
-	if [ $_PATCH_INSTALLED -eq 0 ]; then
-		echo "Patch installed."
-		if [ $_MRE_INSTALLED -eq 0 ]; then
-			echo "MRE installed."
+	_PATCHVER="$(cat "$_PATCHDIR/VERSION.txt" 2>/dev/null)"
+	_MREVER="$(cat "$_MREDIR/VERSION.txt" 2>/dev/null)"
+	if [ -n "$_PATCHVER" ]; then
+		echo "Patch installed (version $_PATCHVER)."
+		if [ -n "$_MREVER" ]; then
+			echo "MRE installed (version $_MREVER)."
 			return 0
 		else
 			echo "MRE not installed."
@@ -218,8 +299,8 @@ _framework_status() {
 		fi
 	else
 		echo "Patch not installed."
-		if [ $_MRE_INSTALLED -eq 0 ]; then
-			echo "MRE installed."
+		if [ -n "$_MREVER" ]; then
+			echo "MRE installed (version $_MREVER)."
 			return 3
 		else
 			echo "MRE not installed."
@@ -488,17 +569,24 @@ _usage() {
 	echo "Management tool for the AER modding framework."
 	echo
 	echo "framework operations:"
-	echo "	fpi, framework-patch-install <patch_archive>"
+	echo "	fci, framework-complete-install"
+	echo "		Install both the AER patch and mod runtime environment using"
+	echo "		remote repositories."
+	echo "	fcu, framework-complete-uninstall"
+	echo "		Uninstall both the AER patch and mod runtime environment."
+	echo "	fcp, framework-complete-purge"
+	echo "		Uninstall the AER patch and mod runtime environment along"
+	echo "		with all mods and modpacks."
+	echo "	fpi, framework-patch-install [patch_archive]"
 	echo "		Install the AER patch."
+	echo "		If no archive is provided, use remote repository."
 	echo "	fpu, framework-patch-uninstall"
 	echo "		Uninstall the AER patch."
-	echo "	fmi, framework-mre-install <mre_archive>"
+	echo "	fmi, framework-mre-install [mre_archive]"
 	echo "		Install the AER mod runtime environment."
+	echo "		If no archive is provided, use remote repository."
 	echo "	fmu, framework-mre-uninstall"
 	echo "		Uninstall the AER mod runtime environment."
-	echo "	fu, framework-uninstall"
-	echo "		Uninstall the AER modding framework along with all"
-	echo "		mods and modpacks."
 	echo "	fs, framework-status"
 	echo "		Display the status of the AER modding framework installation."
 	echo "		Returns:"
@@ -543,6 +631,14 @@ _usage() {
 	echo "		Hyper Light Drifter game directory."
 	echo "		Defaults to \"$_DEFAULT_GAMEDIR_RAW\"."
 	echo "		Currently set to \"$_GAMEDIR\"."
+	echo "	AER_PATCH_REPO"
+	echo "		Framework binary patch repository URL."
+	echo "		Defaults to \"$_DEFAULT_PATCH_REPO\"."
+	echo "		Currently set to \"$_PATCH_REPO\"."
+	echo "	AER_MRE_REPO"
+	echo "		Framework mod runtime environment repository URL."
+	echo "		Defaults to \"$_DEFAULT_MRE_REPO\"."
+	echo "		Currently set to \"$_MRE_REPO\"."
 	echo "	PAGER"
 	echo "		Pager program used to display text."
 	echo "		Defaults to \"$_DEFAULT_PAGER\"."
@@ -570,11 +666,19 @@ _ensure_deps
 case "$1" in
 
 	# Framework operations.
+	'fci'|'framework-complete-install')
+		_framework_complete_install
+		;;
+
+	'fcu'|'framework-complete-uninstall')
+		_framework_complete_uninstall
+		;;
+
+	'fcp'|'framework-complete-purge')
+		_framework_complete_purge
+		;;
+
 	'fpi'|'framework-patch-install')
-		if [ $# -lt 2 ]; then
-			echo "Argument \"patch_archive\" is required!" >&2
-			exit 1
-		fi
 		_framework_patch_install "$2"
 		;;
 
@@ -583,19 +687,11 @@ case "$1" in
 		;;
 
 	'fmi'|'framework-mre-install')
-		if [ $# -lt 2 ]; then
-			echo "Argument \"mre_archive\" is required!" >&2
-			exit 1
-		fi
 		_framework_mre_install "$2"
 		;;
 
 	'fmu'|'framework-mre-uninstall')
 		_framework_mre_uninstall
-		;;
-
-	'fu'|'framework-uninstall')
-		_framework_uninstall
 		;;
 
 	'fs'|'framework-status')
