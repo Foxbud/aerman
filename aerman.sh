@@ -430,7 +430,7 @@ _pack_create() {
 	echo >>"$_PACKFILE"
 	echo "[mre]" >>"$_PACKFILE"
 	echo >>"$_PACKFILE"
-	echo "# Mods in this modpack." >>"$_PACKFILE"
+	echo "# Mods in this modpack from highest priority to lowest." >>"$_PACKFILE"
 	echo "mods = [" >>"$_PACKFILE"
 	for _MODNAME in $@; do
 		echo -e "\t\"$_MODNAME\"," >>"$_PACKFILE"
