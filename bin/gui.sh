@@ -444,7 +444,6 @@ _mod_install_dialog() {
 				continue
 			fi
 			if grep "license" <<<$_LINE >/dev/null; then
-				_TYPE=$(grep -Po '(source code|asset) license' <<<$_LINE)
 				_MOD=$(grep -Po '(?<=")\S*(?=")' <<<$_LINE)
 				read _LINE <&4
 				echo -n 'v' >&3
@@ -458,7 +457,7 @@ _mod_install_dialog() {
 					--ok-label="Accept$_GO_SUF" \
 					--cancel-label="${_BACK_PRE}Reject" \
 					--filename="$_LICENSE" \
-					--checkbox="I accept the $_TYPE of mod \"$_MOD\""
+					--checkbox="I accept the license of mod \"$_MOD\""
 				then
 					echo -n 'a' >&3
 				else

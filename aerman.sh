@@ -333,10 +333,10 @@ _mod_install() {
 			echo "Mod \"$_MODNAME\" already installed!" >&2
 			continue
 		fi
-		_SRCLICENSE="$_STAGEDIR/LICENSE.txt"
-		if [ -e "$_SRCLICENSE" ]; then
+		_LICENSE="$_STAGEDIR/LICENSE.txt"
+		if [ -e "$_LICENSE" ]; then
 			while true; do
-				echo "Mod \"$_MODNAME\" has a source code license."
+				echo "Mod \"$_MODNAME\" has a license."
 				echo "You can [v]iew, [r]eject or [a]ccept it."
 				read -n 1 -rp "[V/r/a] " _INPUT
 				echo
@@ -349,28 +349,7 @@ _mod_install() {
 						break
 						;;
 					*)
-						"$_PAGER" "$_SRCLICENSE"
-						;;
-				esac
-			done
-		fi
-		_ASSETLICENSE="$_STAGEDIR/assets/LICENSE.txt"
-		if [ -e "$_ASSETLICENSE" ]; then
-			while true; do
-				echo "Mod \"$_MODNAME\" has an asset license."
-				echo "You can [v]iew, [r]eject or [a]ccept it."
-				read -n 1 -rp "[V/r/a] " _INPUT
-				echo
-				case "$_INPUT" in
-					'r'|'R')
-						echo "Mod \"$_MODNAME\" will not be installed."
-						continue 2
-						;;
-					'a'|'A')
-						break
-						;;
-					*)
-						"$_PAGER" "$_ASSETLICENSE"
+						"$_PAGER" "$_LICENSE"
 						;;
 				esac
 			done
