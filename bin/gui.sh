@@ -472,6 +472,12 @@ _mod_install_dialog() {
 }
 
 _mod_uninstall_dialog() {
+	_AERMAN_OUT="$(_list_mods)"
+	if [ -z "$_AERMAN_OUT" ]; then
+		_warning_popup "There are no mods."
+		echo "_mod_menu_dialog"
+		return
+	fi
 	_INPUT="$(zenity \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
@@ -485,7 +491,7 @@ _mod_uninstall_dialog() {
 		--hide-column=1 \
 		--column="key" \
 		--column="desc" \
-		$(_list_mods) \
+		$_AERMAN_OUT \
 		)"
 	if [ ! $? -eq 0 ]; then
 		echo "_mod_menu_dialog"
@@ -507,6 +513,12 @@ _mod_uninstall_dialog() {
 }
 
 _mod_status_dialog() {
+	_AERMAN_OUT="$(_list_mods)"
+	if [ -z "$_AERMAN_OUT" ]; then
+		_warning_popup "There are no mods."
+		echo "_mod_menu_dialog"
+		return
+	fi
 	_INPUT="$(zenity \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
@@ -518,7 +530,7 @@ _mod_status_dialog() {
 		--hide-column=1 \
 		--column="key" \
 		--column="desc" \
-		$(_list_mods) \
+		$_AERMAN_OUT \
 		)"
 	if [ ! $? -eq 0 ]; then
 		echo "_mod_menu_dialog"
@@ -593,24 +605,28 @@ _modpack_create_dialog() {
 		echo "_modpack_menu_dialog"
 		return
 	fi
-	_MODS=($(zenity \
-		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
-		--list \
-		--ok-label="$_GO" \
-		--cancel-label="$_BACK" \
-		--text="$(_dialog_display "Modpack Create" \
-			"Which mod(s) would you like to include in \"$_PACKNAME\"?")" \
-		--multiple \
-		--separator=" " \
-		--hide-header \
-		--hide-column=1 \
-		--column="key" \
-		--column="desc" \
-		$(_list_mods) \
-		))
-	if [ ! $? -eq 0 ]; then
-		echo "_modpack_menu_dialog"
-		return
+	_AERMAN_OUT="$(_list_mods)"
+	_MODS=()
+	if [ -n "$_AERMAN_OUT" ]; then
+		_MODS=($(zenity \
+			--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
+			--list \
+			--ok-label="$_GO" \
+			--cancel-label="$_BACK" \
+			--text="$(_dialog_display "Modpack Create" \
+				"Which mod(s) would you like to include in \"$_PACKNAME\"?")" \
+			--multiple \
+			--separator=" " \
+			--hide-header \
+			--hide-column=1 \
+			--column="key" \
+			--column="desc" \
+			$(_list_mods) \
+			))
+		if [ ! $? -eq 0 ]; then
+			echo "_modpack_menu_dialog"
+			return
+		fi
 	fi
 	_INC_AMOUNT=$((100 / (${#_MODS[@]} + 1)))
 	_CUR_AMOUNT=0
@@ -655,6 +671,12 @@ _modpack_create_dialog() {
 }
 
 _modpack_uninstall_dialog() {
+	_AERMAN_OUT="$(_list_modpacks)"
+	if [ -z "$_AERMAN_OUT" ]; then
+		_warning_popup "There are no modpacks."
+		echo "_modpack_menu_dialog"
+		return
+	fi
 	_INPUT="$(zenity \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
@@ -668,7 +690,7 @@ _modpack_uninstall_dialog() {
 		--hide-column=1 \
 		--column="key" \
 		--column="desc" \
-		$(_list_modpacks) \
+		$_AERMAN_OUT \
 		)"
 	if [ ! $? -eq 0 ]; then
 		echo "_modpack_menu_dialog"
@@ -690,6 +712,12 @@ _modpack_uninstall_dialog() {
 }
 
 _modpack_edit_dialog() {
+	_AERMAN_OUT="$(_list_modpacks)"
+	if [ -z "$_AERMAN_OUT" ]; then
+		_warning_popup "There are no modpacks."
+		echo "_modpack_menu_dialog"
+		return
+	fi
 	_INPUT="$(zenity \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
@@ -701,7 +729,7 @@ _modpack_edit_dialog() {
 		--hide-column=1 \
 		--column="key" \
 		--column="desc" \
-		$(_list_modpacks) \
+		$_AERMAN_OUT \
 		)"
 	if [ ! $? -eq 0 ]; then
 		echo "_modpack_menu_dialog"
@@ -731,6 +759,12 @@ _modpack_edit_dialog() {
 }
 
 _modpack_run_dialog() {
+	_AERMAN_OUT="$(_list_modpacks)"
+	if [ -z "$_AERMAN_OUT" ]; then
+		_warning_popup "There are no modpacks."
+		echo "_modpack_menu_dialog"
+		return
+	fi
 	_INPUT="$(zenity \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
@@ -742,7 +776,7 @@ _modpack_run_dialog() {
 		--hide-column=1 \
 		--column="key" \
 		--column="desc" \
-		$(_list_modpacks) \
+		$_AERMAN_OUT \
 		)"
 	if [ ! $? -eq 0 ]; then
 		echo "_modpack_menu_dialog"
