@@ -17,13 +17,14 @@
 
 # Constants.
 
-_VERSION="1.0.1"
+_VERSION="1.1.0"
 
 _SCRIPT="$(readlink -f "$(which "$0")")"
 _SCRIPTNAME="$(basename "$_SCRIPT")"
 _SCRIPTDIR="$(dirname "$_SCRIPT")"
 
-_DEPS="jq rsync sha256sum tar"
+_CLI_DEPS="jq rsync sha256sum tar wget"
+_GUI_DEPS="xdotool zenity"
 
 _NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
@@ -93,11 +94,11 @@ _EXECDIFF="${_ORIGEXEC}Diff"
 # Utility functions.
 
 _ensure_deps() {
-	for _DEP in $_DEPS; do
+	for _DEP in $1; do
 		_DEPVAR=_${_DEP^^}
-		declare -g $_DEPVAR="$(which $_DEP 2>/dev/null)"
+		declare -gx $_DEPVAR="$(which $_DEP 2>/dev/null)"
 		if [ -z "${!_DEPVAR}" ]; then
-			declare -g $_DEPVAR="$(which "$_SCRIPTDIR/bin/$_DEP" 2>/dev/null)"
+			declare -gx $_DEPVAR="$(which "$_SCRIPTDIR/bin/$_DEP" 2>/dev/null)"
 			if [ -z "${!_DEPVAR}" ]; then
 				echo "This command requires \"$_DEP\" to function!" >&2
 				exit 1
@@ -629,6 +630,8 @@ _usage() {
 }
 
 _gui() {
+	# Search for GUI dependencies.
+	_ensure_deps "$_GUI_DEPS"
 	"$_SCRIPTDIR/bin/gui.sh" "$_SCRIPT"
 }
 
@@ -638,8 +641,8 @@ _version() {
 
 
 
-# Search for dependencies.
-_ensure_deps
+# Search for CLI dependencies.
+_ensure_deps "$_CLI_DEPS"
 
 # Determine operation.
 case "$1" in

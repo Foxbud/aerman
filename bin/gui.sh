@@ -33,6 +33,20 @@ _BACK="${_BACK_PRE}Back"
 
 # Utility functions.
 
+_maximize() {
+	_WINDOW=""
+	while [ -z $_WINDOW ]; do
+		_WINDOW="$($_XDOTOOL search --name "$_TITLE")"
+	done;
+	$_XDOTOOL windowsize $_WINDOW 100% 100%
+	$_XDOTOOL windowmove $_WINDOW 0 0
+}
+
+_widget() {
+	_maximize &
+	$_ZENITY "$@"
+}
+
 _aerman() {
 	export PAGER=echo
 	export EDITOR=echo
@@ -44,7 +58,7 @@ _dialog_display() {
 }
 
 _success_popup() {
-	zenity \
+	_widget \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--info \
 		--ok-label="$_BACK" \
@@ -53,7 +67,7 @@ _success_popup() {
 }
 
 _warning_popup() {
-	zenity \
+	_widget \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--warning \
 		--ok-label="$_BACK" \
@@ -90,7 +104,7 @@ _escape() {
 # Dialogs.
 
 _main_menu_dialog() {
-	_INPUT="$(zenity \
+	_INPUT="$(_widget \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
 		--ok-label="$_GO" \
@@ -125,7 +139,7 @@ _main_menu_dialog() {
 }
 
 _framework_menu_dialog() {
-	_INPUT="$(zenity \
+	_INPUT="$(_widget \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
 		--ok-label="$_GO" \
@@ -181,7 +195,7 @@ _framework_menu_dialog() {
 }
 
 _framework_complete_install_dialog() {
-	if zenity \
+	if _widget \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--question \
 		--ok-label="$_GO" \
@@ -200,7 +214,7 @@ _framework_complete_install_dialog() {
 }
 
 _framework_complete_uninstall_dialog() {
-	if zenity \
+	if _widget \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--question \
 		--ok-label="$_GO" \
@@ -219,7 +233,7 @@ _framework_complete_uninstall_dialog() {
 }
 
 _framework_complete_purge_dialog() {
-	if zenity \
+	if _widget \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--question \
 		--ok-label="$_GO" \
@@ -238,7 +252,7 @@ _framework_complete_purge_dialog() {
 }
 
 _framework_patch_install_dialog() {
-	_INPUT="$(zenity \
+	_INPUT="$(_widget \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
 		--ok-label="$_GO" \
@@ -266,7 +280,7 @@ _framework_patch_install_dialog() {
 			echo "_framework_menu_dialog"
 			;;
 		"a")
-			_INPUT="$(zenity \
+			_INPUT="$(_widget \
 				--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 				--file-selection \
 				--file-filter="*.tar.xz *.tar.gz" \
@@ -285,7 +299,7 @@ _framework_patch_install_dialog() {
 }
 
 _framework_patch_uninstall_dialog() {
-	if zenity \
+	if _widget \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--question \
 		--ok-label="$_GO" \
@@ -304,7 +318,7 @@ _framework_patch_uninstall_dialog() {
 }
 
 _framework_mre_install_dialog() {
-	_INPUT="$(zenity \
+	_INPUT="$(_widget \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
 		--ok-label="$_GO" \
@@ -332,7 +346,7 @@ _framework_mre_install_dialog() {
 			echo "_framework_menu_dialog"
 			;;
 		"a")
-			_INPUT="$(zenity \
+			_INPUT="$(_widget \
 				--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 				--file-selection \
 				--file-filter="*.tar.xz *.tar.gz" \
@@ -351,7 +365,7 @@ _framework_mre_install_dialog() {
 }
 
 _framework_mre_uninstall_dialog() {
-	if zenity \
+	if _widget \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--question \
 		--ok-label="$_GO" \
@@ -370,7 +384,7 @@ _framework_mre_uninstall_dialog() {
 }
 
 _framework_status_dialog() {
-	zenity \
+	_widget \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--info \
 		--ok-label="$_BACK" \
@@ -381,7 +395,7 @@ _framework_status_dialog() {
 }
 
 _mod_menu_dialog() {
-	_INPUT="$(zenity \
+	_INPUT="$(_widget \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
 		--ok-label="$_GO" \
@@ -417,7 +431,7 @@ _mod_menu_dialog() {
 }
 
 _mod_install_dialog() {
-	_INPUT="$(zenity \
+	_INPUT="$(_widget \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--file-selection \
 		--multiple \
@@ -451,7 +465,7 @@ _mod_install_dialog() {
 				read _LICENSE <&4
 				read _LINE <&4
 				read _LINE <&4
-				if zenity \
+				if _widget \
 					--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 					--text-info \
 					--ok-label="Accept$_GO_SUF" \
@@ -478,7 +492,7 @@ _mod_uninstall_dialog() {
 		echo "_mod_menu_dialog"
 		return
 	fi
-	_INPUT="$(zenity \
+	_INPUT="$(_widget \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
 		--ok-label="$_GO" \
@@ -519,7 +533,7 @@ _mod_status_dialog() {
 		echo "_mod_menu_dialog"
 		return
 	fi
-	_INPUT="$(zenity \
+	_INPUT="$(_widget \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
 		--ok-label="$_GO" \
@@ -542,7 +556,7 @@ _mod_status_dialog() {
 			;;
 		*)
 			_AERMAN_OUT="$(_aerman ms $_INPUT)"
-			zenity \
+			_widget \
 				--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 				--info \
 				--ok-label="$_BACK" \
@@ -554,7 +568,7 @@ _mod_status_dialog() {
 }
 
 _modpack_menu_dialog() {
-	_INPUT="$(zenity \
+	_INPUT="$(_widget \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
 		--ok-label="$_GO" \
@@ -594,7 +608,7 @@ _modpack_menu_dialog() {
 }
 
 _modpack_create_dialog() {
-	_PACKNAME="$(zenity \
+	_PACKNAME="$(_widget \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--entry \
 		--ok-label="$_GO" \
@@ -608,7 +622,7 @@ _modpack_create_dialog() {
 	_AERMAN_OUT="$(_list_mods)"
 	_MODS=()
 	if [ -n "$_AERMAN_OUT" ]; then
-		_MODS=($(zenity \
+		_MODS=($(_widget \
 			--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 			--list \
 			--ok-label="$_GO" \
@@ -638,7 +652,7 @@ _modpack_create_dialog() {
 	_aerman pc "$_PACKNAME" ${_MODS[@]} >$_OUT 2>&1 &
 	_AERMAN_PID=$!
 	trap "kill $_AERMAN_PID" SIGINT
-	zenity \
+	_widget \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--progress \
 		--auto-close \
@@ -677,7 +691,7 @@ _modpack_uninstall_dialog() {
 		echo "_modpack_menu_dialog"
 		return
 	fi
-	_INPUT="$(zenity \
+	_INPUT="$(_widget \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
 		--ok-label="$_GO" \
@@ -718,7 +732,7 @@ _modpack_edit_dialog() {
 		echo "_modpack_menu_dialog"
 		return
 	fi
-	_INPUT="$(zenity \
+	_INPUT="$(_widget \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
 		--ok-label="$_GO" \
@@ -742,7 +756,7 @@ _modpack_edit_dialog() {
 		*)
 			_PACKFILE="$(_aerman pe $_INPUT 2>&1)"
 			_PACK="$(basename -s ".toml" "$_PACKFILE")"
-			if _PACKCONF="$(zenity \
+			if _PACKCONF="$(_widget \
 				--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 				--text-info \
 				--editable \
@@ -765,7 +779,7 @@ _modpack_run_dialog() {
 		echo "_modpack_menu_dialog"
 		return
 	fi
-	_INPUT="$(zenity \
+	_INPUT="$(_widget \
 		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
 		--ok-label="$_GO" \
@@ -793,7 +807,7 @@ _modpack_run_dialog() {
 			mkfifo $_OUT
 			_aerman pr "$_INPUT" >$_OUT 2>&1 &
 			exec 3<$_OUT
-			if zenity \
+			if _widget \
 				--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 				--text-info \
 				--ok-label="Stop$_GO_SUF" \
@@ -808,19 +822,12 @@ _modpack_run_dialog() {
 
 
 
-# Ensure zenity dependency.
-which zenity >/dev/null 2>&1
-if [ ! $? -eq 0 ]; then
-	echo "This command requires \"zenity\" to function!" >&2
-	exit 1
-fi
-
 # Event loop.
 _NEXT_DIALOG="_main_menu_dialog"
 while [  "${_NEXT_DIALOG::1}" = "_" ]; do
 	_NEXT_DIALOG="$($_NEXT_DIALOG 2>&1)"
 	if [ ! \( $? -eq 0 -a \( "${_NEXT_DIALOG::1}" = "_" -o -z "$_NEXT_DIALOG" \) \) ]; then
-		zenity \
+		_widget \
 			--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 			--error \
 			--text="$(_dialog_display "<span foreground=\"red\">Error</span>" \
