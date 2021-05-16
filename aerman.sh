@@ -26,8 +26,6 @@ _SCRIPTDIR="$(dirname "$_SCRIPT")"
 _CLI_DEPS="jq rsync sha256sum tar wget"
 _GUI_DEPS="zenity"
 
-_NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
 _DEFAULT_PATCH_REPO='https://api.github.com/repos/Foxbud/aerpatch'
 if [ -n "$AER_PATCH_REPO" ]; then
 	_PATCH_REPO="$AER_PATCH_REPO"
@@ -92,6 +90,10 @@ _EXECDIFF="${_ORIGEXEC}Diff"
 
 
 # Utility functions.
+
+_now() {
+	echo $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+}
 
 _ensure_deps() {
 	for _DEP in $1; do
@@ -419,7 +421,7 @@ _pack_create() {
 	fi
 	echo "# ================================" >>"$_PACKFILE"
 	echo "#  MODPACK:  $_PACKNAME" >>"$_PACKFILE"
-	echo "#  CREATED:  $_NOW" >>"$_PACKFILE"
+	echo "#  CREATED:  $(_now)" >>"$_PACKFILE"
 	echo "#  TOOL:     $_SCRIPTNAME ($_VERSION)" >>"$_PACKFILE"
 	echo "# ================================" >>"$_PACKFILE"
 	echo >>"$_PACKFILE"
