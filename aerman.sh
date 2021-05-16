@@ -17,14 +17,14 @@
 
 # Constants.
 
-_VERSION="1.1.0"
+_VERSION="1.0.2"
 
 _SCRIPT="$(readlink -f "$(which "$0")")"
 _SCRIPTNAME="$(basename "$_SCRIPT")"
 _SCRIPTDIR="$(dirname "$_SCRIPT")"
 
 _CLI_DEPS="jq rsync sha256sum tar wget"
-_GUI_DEPS="xdotool zenity"
+_GUI_DEPS="zenity"
 
 _NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 

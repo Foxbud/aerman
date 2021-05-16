@@ -33,17 +33,7 @@ _BACK="${_BACK_PRE}Back"
 
 # Utility functions.
 
-_maximize() {
-	_WINDOW=""
-	while [ -z $_WINDOW ]; do
-		_WINDOW="$($_XDOTOOL search --name "$_TITLE")"
-	done;
-	$_XDOTOOL windowsize $_WINDOW 100% 100%
-	$_XDOTOOL windowmove $_WINDOW 0 0
-}
-
 _widget() {
-	_maximize &
 	$_ZENITY "$@"
 }
 
