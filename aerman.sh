@@ -27,40 +27,23 @@ _CLI_DEPS="jq rsync sha256sum tar wget"
 _GUI_DEPS="zenity"
 
 _DEFAULT_PATCH_REPO='https://api.github.com/repos/Foxbud/aerpatch'
-if [ -n "$AER_PATCH_REPO" ]; then
-	_PATCH_REPO="$AER_PATCH_REPO"
-else
-	_PATCH_REPO="$_DEFAULT_PATCH_REPO"
-fi
+_PATCH_REPO="${AER_PATCH_REPO:-$_DEFAULT_PATCH_REPO}"
 
 _DEFAULT_MRE_REPO='https://api.github.com/repos/Foxbud/libaermre'
-if [ -n "$AER_MRE_REPO" ]; then
-	_MRE_REPO="$AER_MRE_REPO"
-else
-	_MRE_REPO="$_DEFAULT_MRE_REPO"
-fi
+_MRE_REPO="${AER_MRE_REPO:-$_DEFAULT_MRE_REPO}"
 
 _DEFAULT_GAMEDIR_RAW='$HOME/.local/share/Steam/steamapps/common/HyperLightDrifter'
 _DEFAULT_GAMEDIR="$(eval echo "$_DEFAULT_GAMEDIR_RAW")"
-if [ -n "$AER_GAMEDIR" ]; then
-	_GAMEDIR="$AER_GAMEDIR"
-else
-	_GAMEDIR="$_DEFAULT_GAMEDIR"
-fi
+_GAMEDIR="${AER_GAMEDIR:-$_DEFAULT_GAMEDIR}"
 
 _DEFAULT_PAGER=less
-if [ -n "$PAGER" ]; then
-	_PAGER="$PAGER"
-else
-	_PAGER="$_DEFAULT_PAGER"
-fi
+_PAGER="${PAGER:-$_DEFAULT_PAGER}"
 
 _DEFAULT_EDITOR=nano
-if [ -n "$EDITOR" ]; then
-	_EDITOR="$EDITOR"
-else
-	_EDITOR="$_DEFAULT_EDITOR"
-fi
+_EDITOR="${EDITOR:-$_DEFAULT_EDITOR}"
+
+_DEFAULT_LANG="en_US.UTF-8"
+_LANG="${LANG:-$_DEFAULT_LANG}"
 
 _AERDIR_REL="aer"
 _AERDIR="$_GAMEDIR/$_AERDIR_REL"
@@ -524,7 +507,7 @@ _pack_run() {
 		echo "No such modpack \"$1\"!" >&2
 		exit 1
 	fi
-	if [ ! \( -d "$_PATCHDIR" -o -d "$_MREDIR" \) ]; then
+	if [ ! \( -d "$_PATCHDIR" -a -d "$_MREDIR" \) ]; then
 		echo "Framework is not installed!" >&2
 		exit 1
 	fi
@@ -539,6 +522,7 @@ _pack_run() {
 		fi
 	done
 	export LD_LIBRARY_PATH="$_MREDIR/lib:$_GAMEDIR/lib:$LD_LIBRARY_PATH"
+	export LANG="$_LANG"
 	cd "$_GAMEDIR"
 	"./$_MODEXEC"
 	rm -f "$_AERDIR/conf.toml"
@@ -629,6 +613,10 @@ _usage() {
 	echo "		Editing program used to modify text."
 	echo "		Defaults to \"$_DEFAULT_EDITOR\"."
 	echo "		Currently set to \"$_EDITOR\"."
+	echo "	LANG"
+	echo "		Language used to run Hyper Light Drifter."
+	echo "		Defaults to \"$_DEFAULT_LANG\"."
+	echo "		Currently set to \"$_LANG\"."
 }
 
 _gui() {
