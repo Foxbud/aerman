@@ -34,7 +34,7 @@ _BACK="${_BACK_PRE}Back"
 # Utility functions.
 
 _widget() {
-	$_ZENITY "$@"
+	$_ZENITY --title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" "$@"
 }
 
 _aerman() {
@@ -49,7 +49,6 @@ _dialog_display() {
 
 _success_popup() {
 	_widget \
-		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--info \
 		--ok-label="$_BACK" \
 		--text="$(_dialog_display "<span foreground=\"green\">Success</span>" \
@@ -58,7 +57,6 @@ _success_popup() {
 
 _warning_popup() {
 	_widget \
-		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--warning \
 		--ok-label="$_BACK" \
 		--text="$(_dialog_display "<span foreground=\"yellow\">Warning</span>" \
@@ -95,7 +93,6 @@ _escape() {
 
 _main_menu_dialog() {
 	_INPUT="$(_widget \
-		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
 		--ok-label="$_GO" \
 		--cancel-label="${_BACK_PRE}Exit" \
@@ -130,7 +127,6 @@ _main_menu_dialog() {
 
 _framework_menu_dialog() {
 	_INPUT="$(_widget \
-		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
 		--ok-label="$_GO" \
 		--cancel-label="$_BACK" \
@@ -186,7 +182,6 @@ _framework_menu_dialog() {
 
 _framework_complete_install_dialog() {
 	if _widget \
-		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--question \
 		--ok-label="$_GO" \
 		--cancel-label="$_BACK" \
@@ -205,7 +200,6 @@ _framework_complete_install_dialog() {
 
 _framework_complete_uninstall_dialog() {
 	if _widget \
-		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--question \
 		--ok-label="$_GO" \
 		--cancel-label="$_BACK" \
@@ -224,7 +218,6 @@ _framework_complete_uninstall_dialog() {
 
 _framework_complete_purge_dialog() {
 	if _widget \
-		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--question \
 		--ok-label="$_GO" \
 		--cancel-label="$_BACK" \
@@ -243,7 +236,6 @@ _framework_complete_purge_dialog() {
 
 _framework_patch_install_dialog() {
 	_INPUT="$(_widget \
-		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
 		--ok-label="$_GO" \
 		--cancel-label="$_BACK" \
@@ -271,7 +263,6 @@ _framework_patch_install_dialog() {
 			;;
 		"a")
 			_INPUT="$(_widget \
-				--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 				--file-selection \
 				--file-filter="*.tar.xz *.tar.gz" \
 				)"
@@ -290,7 +281,6 @@ _framework_patch_install_dialog() {
 
 _framework_patch_uninstall_dialog() {
 	if _widget \
-		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--question \
 		--ok-label="$_GO" \
 		--cancel-label="$_BACK" \
@@ -309,7 +299,6 @@ _framework_patch_uninstall_dialog() {
 
 _framework_mre_install_dialog() {
 	_INPUT="$(_widget \
-		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
 		--ok-label="$_GO" \
 		--cancel-label="$_BACK" \
@@ -337,7 +326,6 @@ _framework_mre_install_dialog() {
 			;;
 		"a")
 			_INPUT="$(_widget \
-				--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 				--file-selection \
 				--file-filter="*.tar.xz *.tar.gz" \
 				)"
@@ -356,7 +344,6 @@ _framework_mre_install_dialog() {
 
 _framework_mre_uninstall_dialog() {
 	if _widget \
-		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--question \
 		--ok-label="$_GO" \
 		--cancel-label="$_BACK" \
@@ -375,7 +362,6 @@ _framework_mre_uninstall_dialog() {
 
 _framework_status_dialog() {
 	_widget \
-		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--info \
 		--ok-label="$_BACK" \
 		--text="$(_dialog_display "Framework Status" \
@@ -386,7 +372,6 @@ _framework_status_dialog() {
 
 _mod_menu_dialog() {
 	_INPUT="$(_widget \
-		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
 		--ok-label="$_GO" \
 		--cancel-label="$_BACK" \
@@ -422,7 +407,6 @@ _mod_menu_dialog() {
 
 _mod_install_dialog() {
 	_INPUT="$(_widget \
-		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--file-selection \
 		--multiple \
 		--separator=" " \
@@ -456,7 +440,6 @@ _mod_install_dialog() {
 				read _LINE <&4
 				read _LINE <&4
 				if _widget \
-					--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 					--text-info \
 					--ok-label="Accept$_GO_SUF" \
 					--cancel-label="${_BACK_PRE}Reject" \
@@ -483,7 +466,6 @@ _mod_uninstall_dialog() {
 		return
 	fi
 	_INPUT="$(_widget \
-		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
 		--ok-label="$_GO" \
 		--cancel-label="$_BACK" \
@@ -524,7 +506,6 @@ _mod_status_dialog() {
 		return
 	fi
 	_INPUT="$(_widget \
-		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
 		--ok-label="$_GO" \
 		--cancel-label="$_BACK" \
@@ -547,7 +528,6 @@ _mod_status_dialog() {
 		*)
 			_AERMAN_OUT="$(_aerman ms $_INPUT)"
 			_widget \
-				--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 				--info \
 				--ok-label="$_BACK" \
 				--text="$(_dialog_display "Mod Status" \
@@ -559,7 +539,6 @@ _mod_status_dialog() {
 
 _modpack_menu_dialog() {
 	_INPUT="$(_widget \
-		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
 		--ok-label="$_GO" \
 		--cancel-label="$_BACK" \
@@ -599,7 +578,6 @@ _modpack_menu_dialog() {
 
 _modpack_create_dialog() {
 	_PACKNAME="$(_widget \
-		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--entry \
 		--ok-label="$_GO" \
 		--cancel-label="$_BACK" \
@@ -613,7 +591,6 @@ _modpack_create_dialog() {
 	_MODS=()
 	if [ -n "$_AERMAN_OUT" ]; then
 		_MODS=($(_widget \
-			--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 			--list \
 			--ok-label="$_GO" \
 			--cancel-label="$_BACK" \
@@ -643,7 +620,6 @@ _modpack_create_dialog() {
 	_AERMAN_PID=$!
 	trap "kill $_AERMAN_PID" SIGINT
 	_widget \
-		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--progress \
 		--auto-close \
 		--no-cancel \
@@ -682,7 +658,6 @@ _modpack_uninstall_dialog() {
 		return
 	fi
 	_INPUT="$(_widget \
-		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
 		--ok-label="$_GO" \
 		--cancel-label="$_BACK" \
@@ -723,7 +698,6 @@ _modpack_edit_dialog() {
 		return
 	fi
 	_INPUT="$(_widget \
-		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
 		--ok-label="$_GO" \
 		--cancel-label="$_BACK" \
@@ -747,7 +721,6 @@ _modpack_edit_dialog() {
 			_PACKFILE="$(_aerman pe $_INPUT 2>&1)"
 			_PACK="$(basename -s ".toml" "$_PACKFILE")"
 			if _PACKCONF="$(_widget \
-				--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 				--text-info \
 				--editable \
 				--ok-label="Save$_GO_SUF" \
@@ -770,7 +743,6 @@ _modpack_run_dialog() {
 		return
 	fi
 	_INPUT="$(_widget \
-		--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 		--list \
 		--ok-label="$_GO" \
 		--cancel-label="$_BACK" \
@@ -798,7 +770,6 @@ _modpack_run_dialog() {
 			_aerman pr "$_INPUT" >$_OUT 2>&1 &
 			exec 3<$_OUT
 			if _widget \
-				--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 				--text-info \
 				--ok-label="Stop$_GO_SUF" \
 				--cancel-label="$_BACK" <&3
@@ -818,7 +789,6 @@ while [  "${_NEXT_DIALOG::1}" = "_" ]; do
 	_NEXT_DIALOG="$($_NEXT_DIALOG 2>&1)"
 	if [ ! \( $? -eq 0 -a \( "${_NEXT_DIALOG::1}" = "_" -o -z "$_NEXT_DIALOG" \) \) ]; then
 		_widget \
-			--title="$_TITLE" --width="$_WIDTH" --height="$_HEIGHT" \
 			--error \
 			--text="$(_dialog_display "<span foreground=\"red\">Error</span>" \
 			"$_NEXT_DIALOG")"
