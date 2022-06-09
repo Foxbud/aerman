@@ -774,7 +774,7 @@ _modpack_run_dialog() {
 				--ok-label="Stop$_GO_SUF" \
 				--cancel-label="$_BACK" <&3
 			then
-				kill -s KILL $(pgrep "HyperLight")
+				_HLD_PID=($(pgrep "HyperLight")) && kill -s KILL ${_HLD_PID[-1]}
 			fi
 			echo "_modpack_menu_dialog"
 			;;
