@@ -17,7 +17,7 @@
 
 # Constants.
 
-_VERSION="1.0.2"
+_VERSION="1.0.4"
 
 _SCRIPT="$(readlink -f "$(which "$0")")"
 _SCRIPTNAME="$(basename "$_SCRIPT")"
